@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 8 214 140" role="img" aria-label="TwinsChat">
+  <defs>
+    <linearGradient id="tc-bubble" gradientUnits="userSpaceOnUse" x1="110" y1="32" x2="204" y2="136">
+      <stop offset="0" stop-color="#4ade80"/>
+      <stop offset="1" stop-color="#16a34a"/>
+    </linearGradient>
+  </defs>
+  <!-- T : barre en parallélogramme et pied biseauté (hérités de Twins Dev) -->
+  <path fill="#f8fafc" d="M10 20H110L118 38H32Z"/>
+  <path fill="#f8fafc" d="M50 44L72 52V124L50 116Z"/>
+  <!-- C : bulle de discussion ouverte avec sa queue -->
+  <path fill="url(#tc-bubble)" d="M192.77 49.15A48 48 0 1 0 192.77 110.85L177.45 98A28 28 0 1 1 177.45 62Z"/>
+  <path fill="url(#tc-bubble)" d="M135.7 123.5L110 136L114.43 104Z"/>
+  <!-- Indicateur « en train d'écrire » -->
+  <g fill="#4ade80"><circle cx="144" cy="80" r="4.5"/><circle cx="156" cy="80" r="4.5" opacity=".75"/><circle cx="168" cy="80" r="4.5" opacity=".5"/></g>
+</svg>

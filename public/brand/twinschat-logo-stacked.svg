@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="TwinsChat">
+  <defs>
+    <linearGradient id="tc-bubble-s" gradientUnits="userSpaceOnUse" x1="110" y1="32" x2="204" y2="136">
+      <stop offset="0" stop-color="#4ade80"/>
+      <stop offset="1" stop-color="#16a34a"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="#06080f"/>
+  <svg x="240" y="70" width="321" height="210" viewBox="0 8 214 140">
+    <path fill="#f8fafc" d="M10 20H110L118 38H32Z"/>
+    <path fill="#f8fafc" d="M50 44L72 52V124L50 116Z"/>
+    <path fill="url(#tc-bubble-s)" d="M192.77 49.15A48 48 0 1 0 192.77 110.85L177.45 98A28 28 0 1 1 177.45 62Z"/>
+    <path fill="url(#tc-bubble-s)" d="M135.7 123.5L110 136L114.43 104Z"/>
+    <g fill="#4ade80"><circle cx="144" cy="80" r="4.5"/><circle cx="156" cy="80" r="4.5" opacity=".75"/><circle cx="168" cy="80" r="4.5" opacity=".5"/></g>
+  </svg>
+  <text x="400" y="380" text-anchor="middle" font-family="Outfit, 'Segoe UI', sans-serif" font-size="56" font-weight="500" letter-spacing="18">
+    <tspan fill="#f8fafc">TWINS</tspan><tspan fill="#4ade80" dx="22">CHAT</tspan>
+  </text>
+</svg>
