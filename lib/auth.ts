@@ -26,6 +26,8 @@ export type Actor = {
   role: Role;
   company: string | null;
   avatarUrl: string | null;
+  /** Parcours d'accueil terminé (faux juste après l'inscription). */
+  onboarded: boolean;
 };
 
 const digest = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -45,8 +47,10 @@ export const getSessionUser = cache(async (): Promise<Actor | null> => {
     company: string | null;
     avatar_key: string | null;
     avatar_updated_at: Date | null;
+    onboarded: boolean;
   }>(
-    `SELECT u.id, u.full_name, u.email, u.role, u.company, u.avatar_key, u.avatar_updated_at
+    `SELECT u.id, u.full_name, u.email, u.role, u.company, u.avatar_key, u.avatar_updated_at,
+            u.onboarded_at IS NOT NULL AS onboarded
        FROM sessions s
        JOIN users u ON u.id = s.user_id
       WHERE s.id = $1 AND s.expires_at > now()`,
@@ -60,6 +64,7 @@ export const getSessionUser = cache(async (): Promise<Actor | null> => {
     role: row.role,
     company: row.company,
     avatarUrl: avatarUrl(row.id, row.avatar_key, row.avatar_updated_at),
+    onboarded: row.onboarded,
   };
 });
 
@@ -95,11 +100,15 @@ export const requireAdmin = cache(async (): Promise<Actor> => {
   return me;
 });
 
-/** Espace utilisateur : clients, entreprises et utilisateurs (l'admin est renvoyé vers /admin). */
+/**
+ * Espace utilisateur : clients, entreprises et utilisateurs (l'admin est renvoyé vers /admin).
+ * Un compte qui n'a pas terminé le parcours d'accueil y est d'abord envoyé.
+ */
 export const requireMember = cache(async (): Promise<Actor> => {
   const me = await getSessionUser();
   if (!me) redirect("/");
   if (me.role === "admin") redirect(homeFor(me.role));
+  if (!me.onboarded) redirect("/bienvenue");
   return me;
 });
 

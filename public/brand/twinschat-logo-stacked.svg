@@ -6,14 +6,27 @@
     </linearGradient>
   </defs>
   <rect width="800" height="500" fill="#06080f"/>
-  <svg x="240" y="70" width="321" height="210" viewBox="0 8 214 140">
+  <svg x="240" y="110" width="321" height="210" viewBox="0 8 214 140">
     <path fill="#f8fafc" d="M10 20H110L118 38H32Z"/>
     <path fill="#f8fafc" d="M50 44L72 52V124L50 116Z"/>
     <path fill="url(#tc-bubble-s)" d="M192.77 49.15A48 48 0 1 0 192.77 110.85L177.45 98A28 28 0 1 1 177.45 62Z"/>
     <path fill="url(#tc-bubble-s)" d="M135.7 123.5L110 136L114.43 104Z"/>
     <g fill="#4ade80"><circle cx="144" cy="80" r="4.5"/><circle cx="156" cy="80" r="4.5" opacity=".75"/><circle cx="168" cy="80" r="4.5" opacity=".5"/></g>
   </svg>
-  <text x="400" y="380" text-anchor="middle" font-family="Outfit, 'Segoe UI', sans-serif" font-size="56" font-weight="500" letter-spacing="18">
-    <tspan fill="#f8fafc">TWINS</tspan><tspan fill="#4ade80" dx="22">CHAT</tspan>
-  </text>
+  <!-- « TWINS CHAT » dessiné en tracés (aucune police nécessaire) -->
+  <g transform="translate(156 332)" fill="none" stroke-width="6" stroke-linejoin="round">
+    <g stroke="#f8fafc">
+      <path d="M0 3H36M18 3V40"/>
+      <path transform="translate(56 0)" d="M3 0L13.5 37L25 5L36.5 37L47 0"/>
+      <path transform="translate(126 0)" d="M3 0V40"/>
+      <path transform="translate(152 0)" d="M3 40V3L31 37V0"/>
+      <path transform="translate(206 0)" d="M25 8C22.5 4.5 18.5 3 14 3C8 3 4 6 4 11C4 16.5 8.5 18.2 14 19.8C20 21.5 25 23.8 25 29.2C25 34.2 20.5 37 14 37C9 37 5 35 3 31.5"/>
+    </g>
+    <g stroke="#4ade80">
+      <path transform="translate(282 0)" d="M33 8A17 17 0 1 0 33 32"/>
+      <path transform="translate(338 0)" d="M3 0V40M31 0V40M3 20H31"/>
+      <path transform="translate(392 0)" d="M3 40L20 3L37 40M9 27H31"/>
+      <path transform="translate(452 0)" d="M0 3H36M18 3V40"/>
+    </g>
+  </g>
 </svg>

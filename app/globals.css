@@ -92,3 +92,33 @@ body {
     100% { opacity: 1; transform: translateY(0); }
   }
 }
+
+/* Écrans peu hauts (portables, fenêtre non agrandie) : la page de connexion se resserre pour tenir sans défilement */
+@custom-variant short (@media (max-height: 860px));
+
+/* Page de connexion : entrée de la carte, changement d'onglet, reflet du bouton, bordure lumineuse */
+@theme {
+  --animate-auth-in: auth-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-auth-panel: auth-panel 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-auth-shine: auth-shine 0.9s ease-out;
+  --animate-auth-border: badge-spin 7s linear infinite;
+  --animate-select-in: select-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes select-in {
+    0% { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes auth-in {
+    0% { opacity: 0; transform: translateY(18px) scale(0.98); filter: blur(6px); }
+    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  }
+  @keyframes auth-panel {
+    0% { opacity: 0; transform: translateX(var(--auth-from, 0px)); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes auth-shine {
+    0% { transform: translateX(0) skewX(-12deg); }
+    100% { transform: translateX(400%) skewX(-12deg); }
+  }
+}

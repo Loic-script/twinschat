@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="tc-bubble-i" gradientUnits="userSpaceOnUse" x1="110" y1="32" x2="204" y2="136">
+      <stop offset="0" stop-color="#4ade80"/>
+      <stop offset="1" stop-color="#16a34a"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#0f172a"/>
+  <svg x="4" y="12" width="56" height="40" viewBox="4 14 206 128">
+    <path fill="#f8fafc" d="M10 20H110L118 38H32Z"/>
+    <path fill="#f8fafc" d="M50 44L72 52V124L50 116Z"/>
+    <path fill="url(#tc-bubble-i)" d="M192.77 49.15A48 48 0 1 0 192.77 110.85L177.45 98A28 28 0 1 1 177.45 62Z"/>
+    <path fill="url(#tc-bubble-i)" d="M135.7 123.5L110 136L114.43 104Z"/>
+  </svg>
+</svg>

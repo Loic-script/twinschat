@@ -89,7 +89,7 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   redirect(homeFor(user.role));
 }
 
-/** Inscription d'un utilisateur : compte créé, connecté, puis envoyé vers son espace. */
+/** Inscription d'un utilisateur : compte créé, connecté, puis envoyé vers le parcours d'accueil. */
 export async function register(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const email = readEmail(formData);
   const password = read(formData, "password");
@@ -118,7 +118,7 @@ export async function register(_prev: AuthState, formData: FormData): Promise<Au
   if (!user) return taken;
 
   await createSession(user.id);
-  redirect("/user");
+  redirect("/bienvenue");
 }
 
 /** Déconnexion : retour à la page de connexion. */

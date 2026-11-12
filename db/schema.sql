@@ -188,3 +188,22 @@ CREATE TABLE IF NOT EXISTS message_reactions (
 -- Profil : pays et langues parlées (codes ISO 639-1, ex. {fr,mg,en})
 ALTER TABLE users ADD COLUMN IF NOT EXISTS country TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS languages TEXT[] NOT NULL DEFAULT '{}';
+
+-- Connexion avec Google : identifiant Google (« sub ») du compte lié
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_idx ON users (google_sub) WHERE google_sub IS NOT NULL;
+
+-- Profil : site web (adresse complète, ex. https://exemple.com)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS website TEXT;
+
+-- Parcours d'accueil (3 étapes après l'inscription) : date à laquelle il a été complété.
+-- À l'ajout de la colonne, les comptes déjà existants sont considérés comme complétés.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'onboarded_at'
+  ) THEN
+    ALTER TABLE users ADD COLUMN onboarded_at TIMESTAMPTZ;
+    UPDATE users SET onboarded_at = created_at;
+  END IF;
+END $$;
