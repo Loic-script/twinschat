@@ -3,6 +3,8 @@ import { MessagesSquare } from "lucide-react";
 import { ChatPanel } from "@/components/messages/chat-panel";
 import { ConversationList } from "@/components/messages/conversation-list";
 import { requireAdmin } from "@/lib/auth";
+import { mistralConfigured } from "@/lib/mistral";
+import { getTranslationSettings } from "@/lib/translate";
 import { getConversation, listConversations, listMessages } from "@/lib/messages";
 
 export const metadata: Metadata = { title: "Messages" };
@@ -16,6 +18,8 @@ export default async function MessagesPage({
   const requestedId = typeof c === "string" ? c : null;
 
   const admin = await requireAdmin();
+  // Bouton « Traduire » : activé dans le profil admin (français, anglais, malagasy)
+  const translation = await getTranslationSettings(admin.id);
   const [conversations, active] = await Promise.all([
     listConversations(admin.id),
     requestedId ? getConversation(admin.id, requestedId) : Promise.resolve(null),
@@ -37,6 +41,8 @@ export default async function MessagesPage({
       <div className={`h-full min-w-0 flex-1 ${active ? "block" : "hidden md:block"}`}>
         {active ? (
           <ChatPanel
+            translate={translation}
+            assistant={mistralConfigured()}
             space="admin"
             key={active.id}
             conversation={active}

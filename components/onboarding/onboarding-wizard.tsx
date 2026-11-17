@@ -118,7 +118,7 @@ export function OnboardingWizard({
       </div>
 
       {/* Pas d'overflow-hidden ici : les listes déroulantes (type, pays) peuvent dépasser de la carte */}
-      <div className="relative rounded-[27px] bg-[#091013]/[0.94] px-5 py-6 backdrop-blur-xl sm:px-8 sm:py-7">
+      <div className="relative rounded-[27px] bg-[#091013]/[0.94] px-5 py-6 backdrop-blur-xl max-[359px]:px-4 sm:px-8 sm:py-7">
         <div aria-hidden className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-accent-strong/60 to-transparent" />
 
         <Stepper step={step} />
@@ -207,7 +207,7 @@ export function OnboardingWizard({
             </div>
 
             <Actions>
-              <span className="truncate text-xs text-muted">Connecté avec {email}</span>
+              <span className="min-w-0 truncate text-center text-xs text-muted sm:text-left">Connecté avec {email}</span>
               <PrimaryButton type="button" onClick={continueFromStep1}>
                 Continuer <ArrowRight className="size-4" />
               </PrimaryButton>
@@ -491,7 +491,8 @@ function StepPanel({ visible, dir, children }: { visible: boolean; dir: 1 | -1; 
   return (
     <div
       hidden={!visible}
-      className="motion-safe:animate-auth-panel"
+      // z-20 : une liste déroulante ouverte vers le haut passe au-dessus du stepper (z-10)
+      className="relative z-20 motion-safe:animate-auth-panel"
       style={{ "--auth-from": `${dir * 22}px` } as CSSProperties}
     >
       {children}
@@ -552,14 +553,15 @@ function TextField({
 }
 
 function Actions({ children }: { children: ReactNode }) {
-  return <div className="mt-7 flex items-center justify-between gap-3">{children}</div>;
+  // Mobile : boutons empilés pleine largeur, action principale en haut (ordre inversé) ; à partir de sm : sur une ligne.
+  return <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">{children}</div>;
 }
 
 function PrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
-      className="group/btn relative ml-auto inline-flex h-12 items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-b from-[#34d36f] to-[#16a34a] px-6 text-[15px] font-semibold text-[#03140a] shadow-[0_12px_30px_-12px_rgba(34,197,94,0.85),inset_0_1px_0_rgba(255,255,255,0.35)] transition duration-200 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong active:scale-[0.985] disabled:cursor-wait disabled:brightness-90"
+      className="group/btn relative inline-flex h-12 w-full items-center whitespace-nowrap sm:ml-auto sm:w-auto justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-b from-[#34d36f] to-[#16a34a] px-6 text-[15px] font-semibold text-[#03140a] shadow-[0_12px_30px_-12px_rgba(34,197,94,0.85),inset_0_1px_0_rgba(255,255,255,0.35)] transition duration-200 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong active:scale-[0.985] disabled:cursor-wait disabled:brightness-90"
     />
   );
 }
@@ -568,7 +570,7 @@ function SecondaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
-      className="inline-flex h-12 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.03] px-4 text-sm font-medium text-foreground/90 transition hover:border-white/20 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong disabled:opacity-60"
+      className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl sm:w-auto border border-white/[0.1] bg-white/[0.03] px-4 text-sm font-medium text-foreground/90 transition hover:border-white/20 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong disabled:opacity-60"
     />
   );
 }
@@ -668,7 +670,7 @@ function PhotoStep({ isCompany, name, onDone }: { isCompany: boolean; name: stri
         }}
         disabled={busy}
         aria-label={preview ? `Changer le ${what}` : `Choisir un ${what}`}
-        className={`group mx-auto flex w-full flex-col items-center gap-4 rounded-3xl border-2 border-dashed px-6 py-7 transition duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong ${
+        className={`group mx-auto flex w-full flex-col items-center gap-4 rounded-3xl border-2 border-dashed px-4 py-6 transition sm:px-6 sm:py-7 duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong ${
           dragging ? "border-accent bg-accent/[0.07]" : "border-white/[0.12] bg-white/[0.02] hover:border-accent/50 hover:bg-white/[0.04]"
         }`}
       >
@@ -678,7 +680,7 @@ function PhotoStep({ isCompany, name, onDone }: { isCompany: boolean; name: stri
             className={`absolute -inset-2 rounded-full bg-accent/30 blur-xl transition-opacity duration-500 ${saved ? "opacity-100" : "opacity-0"}`}
           />
           <span
-            className={`relative grid size-28 place-items-center overflow-hidden bg-[#0d1518] ring-2 transition ${
+            className={`relative grid size-24 place-items-center sm:size-28 overflow-hidden bg-[#0d1518] ring-2 transition ${
               isCompany ? "rounded-3xl" : "rounded-full"
             } ${saved ? "ring-accent" : "ring-white/10 group-hover:ring-accent/50"}`}
           >

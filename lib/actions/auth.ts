@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createSession, deleteSession, homeFor } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { hashPassword, passwordProblem, verifyPassword } from "@/lib/password";
+import { clientIp, LIMITS, MIN_FORM_MS, rateLimit, retryMessage } from "@/lib/rate-limit";
 import type { Role } from "@/lib/types";
 
 export type AuthField = "email" | "password" | "confirm";
@@ -72,6 +73,9 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   if (isLocked(email)) {
     return { email, message: "Trop de tentatives. Réessayez dans quelques minutes." };
   }
+  // Anti-spam : nombre de tentatives par adresse IP
+  const limited = rateLimit(`login:${await clientIp()}`, LIMITS.login);
+  if (!limited.ok) return { email, message: retryMessage(limited.retryAfterSec) };
 
   const [user] = await query<{ id: string; role: Role; password_hash: string | null }>(
     "SELECT id, role, password_hash FROM users WHERE lower(email) = $1",
@@ -95,6 +99,12 @@ export async function register(_prev: AuthState, formData: FormData): Promise<Au
   const password = read(formData, "password");
   const confirm = read(formData, "confirm");
 
+  // Anti-spam : champ piège (invisible pour un humain, rempli par les robots) et envoi trop rapide
+  const startedAt = Number(read(formData, "started_at"));
+  if (read(formData, "tc_contact_url") || (startedAt > 0 && Date.now() - startedAt < MIN_FORM_MS)) {
+    return { email, message: "Inscription impossible pour le moment. Patientez un instant puis réessayez." };
+  }
+
   const errors: AuthState["errors"] = {};
   if (!email) errors.email = "Saisissez votre adresse e-mail.";
   else if (email.length > 254 || !EMAIL_RE.test(email)) errors.email = "Adresse e-mail invalide.";
@@ -103,6 +113,10 @@ export async function register(_prev: AuthState, formData: FormData): Promise<Au
   if (!confirm) errors.confirm = "Confirmez votre mot de passe.";
   else if (confirm !== password) errors.confirm = "Les mots de passe ne correspondent pas.";
   if (Object.keys(errors).length > 0) return { email, errors };
+
+  // Anti-spam : nombre d'inscriptions par adresse IP
+  const limited = rateLimit(`register:${await clientIp()}`, LIMITS.register);
+  if (!limited.ok) return { email, message: retryMessage(limited.retryAfterSec) };
 
   const taken = { email, errors: { email: "Un compte existe déjà avec cette adresse." } };
   const [existing] = await query("SELECT 1 FROM users WHERE lower(email) = $1", [email]);

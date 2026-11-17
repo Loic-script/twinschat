@@ -54,6 +54,7 @@ export function Composer({
   addOptimistic,
   onSending,
   space,
+  inject,
 }: {
   conversationId: string;
   meId: string;
@@ -64,6 +65,8 @@ export function Composer({
   onSending?: () => void;
   /** Espace de la page (admin ou user) : désigne le compte qui envoie. */
   space: Space;
+  /** Texte à placer dans la zone de saisie (ex. réponse proposée par Mistral) ; `id` change à chaque proposition. */
+  inject?: { id: number; text: string } | null;
 }) {
   const [draft, setDraft] = useState("");
   const [files, setFiles] = useState<PendingFile[]>([]);
@@ -81,6 +84,19 @@ export function Composer({
   const menuRef = useRef<HTMLDivElement>(null);
   const filesRef = useRef(files);
   filesRef.current = files;
+
+  // Proposition reçue : placée dans la zone de saisie (ajoutée sous le texte déjà écrit), à relire avant l'envoi.
+  useEffect(() => {
+    if (!inject?.text) return;
+    setDraft((d) => (d.trim() ? `${d.trimEnd()}\n\n${inject.text}` : inject.text).slice(0, 4000));
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+      el.scrollTop = el.scrollHeight;
+    });
+  }, [inject?.id, inject?.text]);
 
   // Libère les aperçus locaux en quittant la discussion.
   useEffect(

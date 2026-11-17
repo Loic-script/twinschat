@@ -207,3 +207,19 @@ BEGIN
     UPDATE users SET onboarded_at = created_at;
   END IF;
 END $$;
+
+
+-- Traduction des messages (faite par le navigateur) : désactivée par défaut, activée dans le profil.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS translation_enabled BOOLEAN NOT NULL DEFAULT false;
+
+-- Traductions des messages faites par le serveur (IA Mistral) : une par message et par langue.
+-- source_body : texte traduit ; s'il a été modifié depuis, la traduction est refaite.
+CREATE TABLE IF NOT EXISTS message_translations (
+  message_id    UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  lang          TEXT NOT NULL,
+  source_body   TEXT NOT NULL,
+  body          TEXT NOT NULL,
+  detected_lang TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (message_id, lang)
+);

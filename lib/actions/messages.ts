@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getActor } from "@/lib/auth";
 import { pool, query } from "@/lib/db";
 import { isMember, isUuid } from "@/lib/messages";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { REACTION_EMOJIS, type Space } from "@/lib/types";
 
 /*
@@ -43,6 +44,11 @@ export async function sendMessage(
 
   const me = await getActor(space);
   if (!(await isMember(me.id, conversationId))) return NOT_FOUND;
+  // Anti-spam : envois en rafale
+  const limited = rateLimit(`message:${me.id}`, LIMITS.message);
+  if (!limited.ok) {
+    return { ok: false, error: `Vous envoyez beaucoup de messages : patientez ${limited.retryAfterSec} s.` };
+  }
   // Discussion d'un projet encore « Proposé » : fermée jusqu'à la validation par l'admin.
   const [pendingProject] = await query(
     `SELECT 1 FROM conversations c JOIN projects p ON p.id = c.project_id

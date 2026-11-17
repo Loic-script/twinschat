@@ -17,25 +17,36 @@ import {
   CheckCheck,
   Info,
   Clock3,
-  Phone,
+  Languages,
+  Loader2,
   Pin,
   Pencil,
   PinOff,
   SmilePlus,
+  Sparkles,
   Trash2,
-  Video,
   X,
 } from "lucide-react";
 import { deleteMessage, editMessage, markAsRead, toggleReaction, togglePin } from "@/lib/actions/messages";
+import { draftReplyWithMistral } from "@/lib/actions/assistant";
+import { translateMessages } from "@/lib/actions/translate";
+import { BrowserTranslationError, browserTranslationSupported, translateInBrowser, warmUp, type BrowserTranslation } from "@/components/messages/browser-translator";
 import { Composer } from "@/components/messages/composer";
 import { LinkPreview, MessageAttachments } from "@/components/messages/message-attachments";
 import { Avatar } from "@/components/ui/avatar";
 import { RoleBadge } from "@/components/messages/role-badge";
 import { dayKey, displayName, formatDayChip, formatPresence, formatTime } from "@/lib/format";
+import { languageName } from "@/lib/languages";
 import { REACTION_EMOJIS, type ConversationSummary, type Message, type Space } from "@/lib/types";
 
 type UiMessage = Message & { pending?: boolean };
 type Group = { key: string; mine: boolean; newDay: boolean; messages: UiMessage[] };
+/** Traduction reçue, avec le texte d'origine traduit (pour refaire la traduction si le message change). */
+type CachedTranslation = BrowserTranslation & { src: string };
+
+/** Messages envoyés au serveur par appel de traduction. */
+const SERVER_CHUNK = 40;
+
 
 const GROUP_GAP_MS = 5 * 60_000;
 
@@ -100,6 +111,8 @@ export function ChatPanel({
   space,
   composerPlaceholder,
   locked,
+  translate,
+  assistant = false,
 }: {
   conversation: ConversationSummary;
   messages: Message[];
@@ -125,6 +138,10 @@ export function ChatPanel({
   composerPlaceholder?: string;
   /** Discussion fermée (ex. projet en attente de validation) : ce contenu remplace la zone de saisie. */
   locked?: ReactNode;
+  /** Bouton « Traduire » : activé ou non (profil), et langues proposées (messages reçus traduits dans l'une d'elles). */
+  translate?: { enabled: boolean; languages: string[]; server: boolean };
+  /** Admin, Mistral configuré : bouton « Répondre avec Mistral » sur les messages reçus (brouillon à relire). */
+  assistant?: boolean;
 }) {
   const { contact } = conversation;
   const [showDetails, setShowDetails] = useState(false);
@@ -136,6 +153,57 @@ export function ChatPanel({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showPinned, setShowPinned] = useState(false);
   const [, startTransition] = useTransition();
+
+  // Traduction des messages reçus : langue choisie (mémorisée sur cet appareil) et traductions obtenues
+  const langKey = `twinschat:traduction:${meId}`;
+  const [lang, setLang] = useState<string | null>(null);
+  const [translations, setTranslations] = useState<Record<string, Record<string, CachedTranslation>>>({});
+  const [translating, setTranslating] = useState(false);
+  const [originals, setOriginals] = useState<Set<string>>(() => new Set());
+  const requested = useRef(new Set<string>());
+
+  // Réponse proposée par Mistral : placée dans la zone de saisie, jamais envoyée automatiquement
+  const [injected, setInjected] = useState<{ id: number; text: string } | null>(null);
+  const [draftingId, setDraftingId] = useState<string | null>(null);
+
+  async function draftReply(messageId: string) {
+    if (draftingId) return;
+    setError(null);
+    setDraftingId(messageId);
+    try {
+      const res = await draftReplyWithMistral(conversation.id, messageId);
+      if (res.ok) setInjected({ id: Date.now(), text: res.draft });
+      else setError(res.error);
+    } catch {
+      setError("La rédaction avec Mistral a échoué.");
+    } finally {
+      setDraftingId(null);
+    }
+  }
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(langKey);
+      if (saved && translate?.enabled && translate.languages.includes(saved)) setLang(saved);
+    } catch {
+      /* stockage indisponible : pas de langue mémorisée */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- uniquement à l'ouverture
+  }, []);
+
+  function chooseLanguage(next: string | null) {
+    // Dans le clic : le navigateur peut télécharger le modèle de détection de langue
+    if (next && !translate?.server) warmUp();
+    setLang(next);
+    setOriginals(new Set());
+    if (next) setError(null);
+    try {
+      if (next) localStorage.setItem(langKey, next);
+      else localStorage.removeItem(langKey);
+    } catch {
+      /* stockage indisponible */
+    }
+  }
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -179,6 +247,74 @@ export function ChatPanel({
   useEffect(() => {
     if (lastIncomingId) void markAsRead(space, conversation.id);
   }, [space, conversation.id, lastIncomingId]);
+
+  // Langue choisie : traduit les messages reçus pas encore traduits (les plus récents d'abord).
+  // Le serveur (IA Mistral) d'abord ; s'il est indisponible (pas de clé, quota atteint), le navigateur prend le relais.
+  useEffect(() => {
+    if (!lang || !translate?.enabled) return;
+    const keyOf = (m: UiMessage) => `${lang}:${m.id}:${m.body}`;
+    const todo = optimistic
+      .filter((m) => m.senderId !== meId && !m.deleted && !m.pending && m.body.trim())
+      .filter((m) => !requested.current.has(keyOf(m)))
+      .reverse();
+    if (todo.length === 0) return;
+    todo.forEach((m) => requested.current.add(keyOf(m)));
+
+    const save = (m: UiMessage, t: BrowserTranslation) =>
+      setTranslations((all) => ({ ...all, [lang]: { ...all[lang], [m.id]: { ...t, src: m.body } } }));
+    // Échec définitif : on oublie ces demandes (nouvel essai en choisissant de nouveau la langue)
+    const fail = (rest: UiMessage[], message: string) => {
+      rest.forEach((m) => requested.current.delete(keyOf(m)));
+      setError(message);
+      setLang((current) => (current === lang ? null : current));
+    };
+
+    setTranslating(true);
+    void (async () => {
+      let rest = todo;
+      if (translate.server) {
+        while (rest.length > 0) {
+          const chunk = rest.slice(0, SERVER_CHUNK);
+          const res = await translateMessages(space, conversation.id, chunk.map((m) => m.id), lang).catch(() => null);
+          if (res?.ok) {
+            chunk.forEach((m) => res.translations[m.id] && save(m, res.translations[m.id]));
+            rest = rest.slice(SERVER_CHUNK);
+            continue;
+          }
+          if (res && !res.fallback) {
+            fail(rest, res.error);
+            setTranslating(false);
+            return;
+          }
+          break; // Mistral indisponible : le navigateur traduit le reste
+        }
+      }
+      if (rest.length > 0 && !browserTranslationSupported()) {
+        fail(
+          rest,
+          translate.server
+            ? "La traduction est momentanément indisponible. Réessayez plus tard."
+            : "La traduction nécessite Chrome sur ordinateur (version 138 ou plus récente).",
+        );
+        setTranslating(false);
+        return;
+      }
+      for (const [i, m] of rest.entries()) {
+        try {
+          save(m, await translateInBrowser(m.body, lang));
+        } catch (err) {
+          // Langue d'origine non prise en charge : ce message reste tel quel
+          if (err instanceof BrowserTranslationError && err.message === "pair-unavailable") continue;
+          fail(rest.slice(i), "Le modèle de traduction n'a pas pu être préparé. Choisissez de nouveau la langue pour réessayer.");
+          break;
+        }
+      }
+      setTranslating(false);
+    })();
+  }, [lang, optimistic, meId, space, conversation.id, translate?.enabled, translate?.server]);
+
+  // Traduction désactivée dans le profil : on revient aux messages originaux
+  const activeLang = translate?.enabled ? lang : null;
 
   const pinned = optimistic.filter((m) => m.pinned && !m.deleted);
   const groups = groupMessages(optimistic, meId);
@@ -266,12 +402,17 @@ export function ChatPanel({
               </span>
             )}
           </button>
-          <button type="button" disabled className={`${headerButton} hidden sm:inline-flex`} aria-label="Appel vidéo (bientôt disponible)" title="Appel vidéo : bientôt disponible">
-            <Video className="size-5" />
-          </button>
-          <button type="button" disabled className={`${headerButton} hidden sm:inline-flex`} aria-label="Appel audio (bientôt disponible)" title="Appel audio : bientôt disponible">
-            <Phone className="size-5" />
-          </button>
+          {translate && (
+            <TranslateMenu
+              languages={translate.languages}
+              enabled={translate.enabled}
+              server={translate.server}
+              settingsHref={space === "admin" ? "/admin/profil" : "/user/profil"}
+              value={activeLang}
+              busy={translating}
+              onChange={chooseLanguage}
+            />
+          )}
           {headerActions}
           {details && (
             <button
@@ -378,6 +519,21 @@ export function ChatPanel({
                         mine={g.mine}
                         meId={meId}
                         canDelete={g.mine || canModerate}
+                        translation={(() => {
+                          const t = activeLang && !g.mine ? translations[activeLang]?.[m.id] : undefined;
+                          return t && t.src === m.body ? t : undefined;
+                        })()}
+                        showOriginal={originals.has(m.id)}
+                        onDraftReply={assistant && !g.mine && m.body.trim() ? () => void draftReply(m.id) : undefined}
+                        drafting={draftingId === m.id}
+                        onToggleOriginal={() =>
+                          setOriginals((set) => {
+                            const next = new Set(set);
+                            if (next.has(m.id)) next.delete(m.id);
+                            else next.add(m.id);
+                            return next;
+                          })
+                        }
                         confirmingDelete={confirmDeleteId === m.id}
                         onReact={(emoji) => runAction(() => toggleReaction(space, conversation.id, m.id, emoji))}
                         onEdit={(body) => editMessage(space, conversation.id, m.id, body)}
@@ -416,6 +572,7 @@ export function ChatPanel({
           label={heading ? `Message : ${heading.title}` : `Message à ${contact.name}`}
           placeholder={composerPlaceholder ?? `Écrire un message à ${contact.name.split(" ")[0]}…`}
           addOptimistic={addOptimistic}
+          inject={injected}
           onSending={() => {
             setError(null);
             stickToBottom.current = true;
@@ -455,6 +612,11 @@ function MessageBubble({
   meId,
   canDelete,
   confirmingDelete,
+  translation,
+  showOriginal,
+  onToggleOriginal,
+  onDraftReply,
+  drafting = false,
   onReact,
   onEdit,
   onTogglePin,
@@ -467,6 +629,13 @@ function MessageBubble({
   meId: string;
   canDelete: boolean;
   confirmingDelete: boolean;
+  /** Traduction du message dans la langue choisie (messages reçus). */
+  translation?: BrowserTranslation;
+  showOriginal: boolean;
+  onToggleOriginal: () => void;
+  /** Admin : faire rédiger une réponse à ce message par Mistral. */
+  onDraftReply?: () => void;
+  drafting?: boolean;
   onReact: (emoji: string) => void;
   onEdit: (body: string) => Promise<{ ok: boolean; error?: string }>;
   onTogglePin: () => void;
@@ -475,6 +644,8 @@ function MessageBubble({
   onConfirmDelete: () => void;
 }) {
   const canAct = !m.deleted && !m.pending;
+  // Traduction utile seulement si le texte change (message déjà dans la langue choisie : rien à afficher)
+  const translated = !!translation && translation.body.trim() !== m.body.trim();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(m.body);
   const [editError, setEditError] = useState<string | null>(null);
@@ -593,10 +764,22 @@ function MessageBubble({
                 <MessageAttachments attachments={m.attachments} mine={mine} pending={m.pending} />
               </div>
             )}
-            {m.body && linkify(m.body, mine)}
+            {m.body && linkify(translated && !showOriginal ? translation!.body : m.body, mine)}
             {m.editedAt && (
               <span className={`ml-2 text-[11px] whitespace-nowrap ${mine ? "text-background/60" : "text-muted"}`}>
                 (modifié)
+              </span>
+            )}
+            {translated && (
+              <span className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs whitespace-normal text-muted">
+                <Languages className="size-3.5 shrink-0" aria-hidden />
+                {showOriginal
+                  ? "Message original"
+                  : `Traduit${translation!.from ? ` · original en ${languageName(translation!.from).toLocaleLowerCase("fr")}` : ""}`}
+                <span aria-hidden>·</span>
+                <button type="button" onClick={onToggleOriginal} className="font-medium text-accent-strong hover:underline">
+                  {showOriginal ? "Voir la traduction" : "Voir l'original"}
+                </button>
               </span>
             )}
             {m.body && <LinkPreview body={m.body} mine={mine} />}
@@ -607,7 +790,7 @@ function MessageBubble({
       {canAct && (
         <div
           className={`relative flex shrink-0 items-center gap-0.5 transition-opacity ${
-            confirmingDelete || pickerOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+            confirmingDelete || pickerOpen || drafting ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
           }`}
         >
           {confirmingDelete ? (
@@ -622,6 +805,18 @@ function MessageBubble({
             </span>
           ) : (
             <>
+              {onDraftReply && (
+                <button
+                  type="button"
+                  onClick={onDraftReply}
+                  disabled={drafting}
+                  className={`${iconBtn} hover:text-accent-strong disabled:cursor-wait ${drafting ? "text-accent-strong" : ""}`}
+                  aria-label={drafting ? "Mistral rédige une réponse…" : "Répondre avec Mistral"}
+                  title={drafting ? "Mistral rédige une réponse…" : "Répondre avec Mistral"}
+                >
+                  {drafting ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                </button>
+              )}
               <div ref={pickerRef} className="relative">
                 <button
                   type="button"
@@ -725,6 +920,121 @@ function MessageBubble({
             );
           })}
         </ul>
+      )}
+    </div>
+  );
+}
+
+/** Bouton « Traduire » de l'en-tête : choix d'une des langues du profil, ou retour aux originaux. */
+function TranslateMenu({
+  languages,
+  enabled,
+  server,
+  settingsHref,
+  value,
+  busy,
+  onChange,
+}: {
+  languages: string[];
+  /** Désactivée dans le profil : le menu propose seulement de l'activer. */
+  enabled: boolean;
+  /** Le serveur (Mistral) traduit : peu importe le navigateur. */
+  server: boolean;
+  settingsHref: string;
+  value: string | null;
+  busy: boolean;
+  onChange: (lang: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  // Vérifié après le premier rendu (l'API n'existe que dans le navigateur)
+  const [supported, setSupported] = useState(true);
+  useEffect(() => setSupported(browserTranslationSupported()), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const pick = (lang: string | null) => {
+    onChange(lang);
+    setOpen(false);
+  };
+  const item = "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors hover:bg-surface-2";
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={value ? `Traduction : ${languageName(value)}` : "Traduire les messages"}
+        title={value ? `Traduction : ${languageName(value)}` : "Traduire"}
+        className={`${headerButton} ${value || open ? "bg-accent/15 text-accent-strong" : ""}`}
+      >
+        {busy ? <Loader2 className="size-5 animate-spin" /> : <Languages className="size-5" />}
+        {value && (
+          <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-background uppercase">
+            {value}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label="Traduire les messages"
+          className="absolute top-full right-0 z-30 mt-2 w-64 origin-top-right rounded-2xl border border-border bg-surface p-1.5 shadow-2xl shadow-black/60 motion-safe:animate-select-in"
+        >
+          <p className="px-3 pt-2 pb-1.5 text-[11px] font-medium tracking-wide text-muted uppercase">Traduire les messages en</p>
+          {!enabled ? (
+            <p className="px-3 py-2 text-sm text-muted">
+              La traduction est désactivée. Activez-la dans votre profil.
+            </p>
+          ) : !server && !supported ? (
+            <p className="px-3 py-2 text-sm text-muted">
+              La traduction se fait dans le navigateur : ouvrez TwinsChat dans Chrome sur ordinateur (version 138 ou plus récente).
+            </p>
+          ) : languages.length === 0 ? (
+            <p className="px-3 py-2 text-sm text-muted">Ajoutez les langues que vous parlez dans votre profil.</p>
+          ) : (
+            languages.map((code) => (
+              <button
+                key={code}
+                type="button"
+                role="menuitemradio"
+                aria-checked={value === code}
+                onClick={() => pick(code)}
+                className={`${item} ${value === code ? "font-medium text-accent-strong" : "text-foreground/90"}`}
+              >
+                <span className="min-w-0 flex-1 truncate">{languageName(code)}</span>
+                {value === code && <Check className="size-4 shrink-0" strokeWidth={3} aria-hidden />}
+              </button>
+            ))
+          )}
+          {value && (
+            <button type="button" role="menuitem" onClick={() => pick(null)} className={`${item} text-foreground/90`}>
+              Afficher les messages originaux
+            </button>
+          )}
+          <div className="mt-1 border-t border-border/60 pt-1">
+            <Link
+              href={settingsHref}
+              className={`${item} ${enabled ? "text-xs text-muted hover:text-foreground" : "font-medium text-accent-strong"}`}
+              onClick={() => setOpen(false)}
+            >
+              {enabled ? "Réglages de traduction" : "Activer la traduction"}
+            </Link>
+          </div>
+        </div>
       )}
     </div>
   );

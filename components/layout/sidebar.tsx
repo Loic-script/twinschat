@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChartColumn, FolderOpen, MessagesSquare, UserRound, Users, type LucideIcon } from "lucide-react";
@@ -55,6 +56,41 @@ export function AppSidebar({
   const { label, home, profile, nav } = SPACES[space];
   const profileActive = isActive(profile.href);
 
+  // Dernier passage dans chaque rubrique (mémorisé sur l'appareil) : le point vert ne signale que les nouveautés depuis.
+  const visitedKey = `twinschat:rubriques-vues:${space}`;
+  const [visited, setVisited] = useState<Record<string, string>>({});
+  useEffect(() => {
+    try {
+      setVisited(JSON.parse(localStorage.getItem(visitedKey) ?? "{}"));
+    } catch {
+      /* stockage indisponible */
+    }
+  }, [visitedKey]);
+  useEffect(() => {
+    const section = nav.find((n) => isActive(n.href));
+    if (!section) return;
+    setVisited((v) => {
+      const next = { ...v, [section.href]: new Date().toISOString() };
+      try {
+        localStorage.setItem(visitedKey, JSON.stringify(next));
+      } catch {
+        /* stockage indisponible */
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- à chaque changement de page
+  }, [pathname]);
+
+  /** Notification non lue qui mène à cette rubrique, arrivée depuis le dernier passage (et pas sur la page en cours). */
+  const hasNews = (href: string) =>
+    !isActive(href) &&
+    notifications.items.some(
+      (i) =>
+        i.unread &&
+        (i.href === href || i.href.startsWith(`${href}?`) || i.href.startsWith(`${href}/`)) &&
+        (!visited[href] || i.at > visited[href]),
+    );
+
   return (
     <>
       <BrowserNotifier feed={notifications} />
@@ -73,16 +109,17 @@ export function AppSidebar({
           <Link
             key={href}
             href={href}
-            title={itemLabel}
-            aria-label={itemLabel}
+            title={hasNews(href) ? `${itemLabel} : nouveautés` : itemLabel}
+            aria-label={hasNews(href) ? `${itemLabel}, nouveautés` : itemLabel}
             aria-current={isActive(href) ? "page" : undefined}
-            className={`inline-flex size-[52px] items-center justify-center rounded-2xl transition-colors ${
+            className={`relative inline-flex size-[52px] items-center justify-center rounded-2xl transition-colors ${
               isActive(href)
                 ? "bg-accent text-background shadow-lg shadow-accent/25"
                 : "bg-surface-2/70 text-muted hover:bg-surface-2 hover:text-foreground"
             }`}
           >
             <Icon className="size-[22px]" strokeWidth={1.9} />
+            {hasNews(href) && <NewsDot className="top-2.5 right-2.5" />}
           </Link>
         ))}
         <div className="mt-auto">
@@ -117,11 +154,15 @@ export function AppSidebar({
             key={href}
             href={href}
             aria-current={isActive(href) ? "page" : undefined}
+            aria-label={hasNews(href) ? `${itemLabel}, nouveautés` : undefined}
             className={`flex flex-1 flex-col items-center gap-1 rounded-xl py-1.5 text-[11px] ${
               isActive(href) ? "bg-accent/15 text-accent-strong" : "text-muted"
             }`}
           >
-            <Icon className="size-5" strokeWidth={1.9} />
+            <span className="relative">
+              <Icon className="size-5" strokeWidth={1.9} />
+              {hasNews(href) && <NewsDot className="-top-0.5 -right-1" />}
+            </span>
             {short ?? itemLabel}
           </Link>
         ))}
@@ -138,5 +179,15 @@ export function AppSidebar({
         </Link>
       </nav>
     </>
+  );
+}
+
+/** Point vert « nouveautés » sur une rubrique (pulsation douce, coupée si les animations sont réduites). */
+function NewsDot({ className }: { className: string }) {
+  return (
+    <span aria-hidden className={`pointer-events-none absolute flex size-2.5 ${className}`}>
+      <span className="absolute inset-0 rounded-full bg-accent opacity-60 motion-safe:animate-ping" />
+      <span className="relative size-2.5 rounded-full bg-accent ring-2 ring-surface" />
+    </span>
   );
 }

@@ -25,6 +25,7 @@ import {
   type Participant,
   type ProjectWithOwner,
 } from "@/lib/projects";
+import { getTranslationSettings } from "@/lib/translate";
 import type { ConversationSummary, Message } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Messages" };
@@ -76,7 +77,12 @@ export default async function MemberMessagesPage({
   }
   const notFound = (requestedProject !== null || requestedConversation !== null) && !chat;
 
-  const [conversations, projects] = await Promise.all([listMemberConversations(me.id), listMemberProjects(me.id)]);
+  const [conversations, projects, translation] = await Promise.all([
+    listMemberConversations(me.id),
+    listMemberProjects(me.id),
+    // Bouton « Traduire » : activé dans le profil, avec les langues du profil
+    getTranslationSettings(me.id),
+  ]);
 
   // Liste : l'administration, puis les projets (les siens et ceux où il a été ajouté).
   const directSummary = conversations.find((c) => c.id === directId);
@@ -143,6 +149,7 @@ export default async function MemberMessagesPage({
             meAvatarUrl={me.avatarUrl}
             backHref="/user/messages"
             canModerate={false}
+            translate={translation}
             composerPlaceholder="Écrire un message sur ce projet…"
             locked={chat.project.data.status === "propose" ? <ProjectPendingNotice /> : undefined}
             avatar={<ProjectAvatar />}
@@ -185,6 +192,7 @@ export default async function MemberMessagesPage({
             meAvatarUrl={me.avatarUrl}
             backHref="/user/messages"
             canModerate={false}
+            translate={translation}
             composerPlaceholder="Écrire à l'administration…"
             heading={{
               title: displayName(chat.conversation.contact),
@@ -253,7 +261,8 @@ function ProjectSubtitle({
 /** Pastille « Administration » de l'en-tête de la discussion directe. */
 function AdminBadge() {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface-2/40 px-2 py-0.5 text-[11px] font-medium text-foreground/75">
+    // Masquée sur petit écran : le nom de l'administration reste lisible
+    <span className="hidden shrink-0 items-center gap-1 rounded-full border border-border sm:inline-flex bg-surface-2/40 px-2 py-0.5 text-[11px] font-medium text-foreground/75">
       <ShieldCheck className="size-3" /> Administration
     </span>
   );

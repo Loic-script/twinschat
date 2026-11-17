@@ -14,6 +14,14 @@ const MAIN_LABELS: Record<string, string> = {
   it: "Italien",
 };
 
+/** Langues de traduction proposées à l'administration (les utilisateurs ont celles de leur profil). */
+export const ADMIN_TRANSLATION_LANGUAGES = ["fr", "en"];
+
+/** Langues que le traducteur intégré de Chrome sait traduire (le malagasy n'en fait pas partie). */
+export const BROWSER_TRANSLATION_LANGUAGES = new Set(
+  "ar bg bn cs da de el en es fi fr he hi hr hu id it ja kn ko lt mr nl no nb pl pt ro ru sk sl sv ta te th tr uk vi zh".split(" "),
+);
+
 /** Toutes les langues ISO 639-1 (choix « Autre »). */
 export const ALL_LANGUAGE_CODES = (
   "aa ab af ak am an ar as av ay az ba be bg bi bm bn bo br bs ca ce ch co cr cs cv cy da de dv dz ee el en eo es et eu " +

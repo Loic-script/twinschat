@@ -6,16 +6,18 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { AvatarEditor } from "@/components/profile/avatar-editor";
 import { CoverEditor } from "@/components/profile/cover-editor";
 import { PasswordForm } from "@/components/profile/password-form";
+import { TranslationSettings } from "@/components/profile/translation-settings";
 import { requireMember } from "@/lib/auth";
 import { displayName, formatDate, ROLE_LABELS } from "@/lib/format";
 import { getMemberProfile } from "@/lib/profile";
+import { getTranslationSettings } from "@/lib/translate";
 
 export const metadata: Metadata = { title: "Mon profil" };
 
 /** Profil de l'utilisateur : photos, informations et mot de passe. */
 export default async function MemberProfilePage() {
   const me = await requireMember();
-  const profile = await getMemberProfile(me.id);
+  const [profile, translation] = await Promise.all([getMemberProfile(me.id), getTranslationSettings(me.id)]);
   const title = displayName(profile);
 
   return (
@@ -60,6 +62,12 @@ export default async function MemberProfilePage() {
             Ces informations aident l&apos;équipe Twins Dev à vous connaître et à suivre vos projets.
           </p>
           <MemberProfileForm profile={profile} />
+        </section>
+
+        {/* Traduction des messages */}
+        <section className="mt-6 rounded-[24px] border border-border/60 bg-surface-2/35 p-6">
+          <h2 className="mb-5 text-lg font-semibold">Traduction</h2>
+          <TranslationSettings space="user" enabled={translation.enabled} languages={translation.languages} server={translation.server} />
         </section>
 
         {/* Mot de passe */}

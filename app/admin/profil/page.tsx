@@ -4,16 +4,18 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { AvatarEditor } from "@/components/profile/avatar-editor";
 import { CoverEditor } from "@/components/profile/cover-editor";
 import { PasswordForm } from "@/components/profile/password-form";
+import { TranslationSettings } from "@/components/profile/translation-settings";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminProfile } from "@/lib/profile";
+import { getTranslationSettings } from "@/lib/translate";
 
 export const metadata: Metadata = { title: "Profil admin" };
 
 /** Profil admin : photo de couverture, photo de profil, pseudo, e-mail et mot de passe. */
 export default async function AdminProfilePage() {
   const admin = await requireAdmin();
-  const profile = await getAdminProfile(admin.id);
+  const [profile, translation] = await Promise.all([getAdminProfile(admin.id), getTranslationSettings(admin.id)]);
 
   return (
     <div className="scroll-thin h-full overflow-y-auto">
@@ -46,6 +48,12 @@ export default async function AdminProfilePage() {
           <h2 className="text-lg font-semibold">Pseudo et e-mail</h2>
           <p className="mt-1 mb-6 text-sm text-muted">Votre pseudo est visible par les utilisateurs dans les discussions.</p>
           <ProfileForm profile={profile} />
+        </section>
+
+        {/* Traduction des messages */}
+        <section className="mt-6 rounded-[24px] border border-border/60 bg-surface-2/35 p-6">
+          <h2 className="mb-5 text-lg font-semibold">Traduction</h2>
+          <TranslationSettings space="admin" enabled={translation.enabled} languages={translation.languages} server={translation.server} />
         </section>
 
         {/* Mot de passe */}

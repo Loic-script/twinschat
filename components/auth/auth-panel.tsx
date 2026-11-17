@@ -204,8 +204,17 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   const [state, formAction, pending] = useActionState(register, initialState);
   const formRef = useErrorFeedback(state);
   const [password, setPassword] = useState("");
+  // Anti-spam : heure d'affichage du formulaire (un envoi immédiat trahit un robot)
+  const [startedAt, setStartedAt] = useState("");
+  useEffect(() => setStartedAt(String(Date.now())), []);
   return (
     <form ref={formRef} action={formAction} className="space-y-4 short:space-y-3">
+      <input type="hidden" name="started_at" value={startedAt} />
+      {/* Champ piège : caché aux humains (et aux lecteurs d'écran), les robots le remplissent */}
+      <div aria-hidden className="absolute -left-[9999px] h-px w-px overflow-hidden">
+        <label htmlFor="tc_contact_url">Ne pas remplir</label>
+        <input id="tc_contact_url" name="tc_contact_url" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
+      </div>
       <div className={STAGGER} style={stagger(0)}>
         <EmailField state={state} enterKeyHint="next" />
       </div>
@@ -517,7 +526,7 @@ function GoogleSignIn() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-3 text-xs text-muted/70 short:mb-3" aria-hidden>
+      <div className="mb-4 flex items-center gap-3 text-xs text-muted short:mb-3" aria-hidden>
         <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
         ou
         <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />

@@ -8,9 +8,11 @@ import {
   googleConfig,
   startGoogleAuth,
 } from "@/lib/google-auth";
+import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
 
 /** Bouton « Continuer avec Google » : départ vers la page de choix de compte Google. */
 export async function GET(request: NextRequest) {
+  if (!rateLimit(`google:${await clientIp()}`, LIMITS.google).ok) redirect("/?erreur=google-limite");
   const config = googleConfig(request.nextUrl.origin);
   if (!config) redirect("/?erreur=google-config");
 

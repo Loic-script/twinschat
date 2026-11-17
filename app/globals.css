@@ -88,7 +88,7 @@ body {
   --animate-stat-in: stat-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes stat-in {
-    0% { opacity: 0; transform: translateY(12px); }
+    0% { opacity: 0.01; transform: translateY(12px); }
     100% { opacity: 1; transform: translateY(0); }
   }
 }
@@ -109,16 +109,27 @@ body {
     100% { opacity: 1; transform: translateY(0) scale(1); }
   }
 
+  /* Départ à 0.01 (et non 0) : invisible à l'œil, mais le navigateur compte le contenu comme affiché (FCP / LCP) */
   @keyframes auth-in {
-    0% { opacity: 0; transform: translateY(18px) scale(0.98); filter: blur(6px); }
+    0% { opacity: 0.01; transform: translateY(18px) scale(0.98); filter: blur(6px); }
     100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
   }
   @keyframes auth-panel {
-    0% { opacity: 0; transform: translateX(var(--auth-from, 0px)); }
+    0% { opacity: 0.01; transform: translateX(var(--auth-from, 0px)); }
     100% { opacity: 1; transform: translateX(0); }
   }
   @keyframes auth-shine {
     0% { transform: translateX(0) skewX(-12deg); }
     100% { transform: translateX(400%) skewX(-12deg); }
+  }
+}
+
+/* Pages d'erreur : le robot flotte doucement */
+@theme {
+  --animate-err-float: err-float 6s ease-in-out infinite;
+
+  @keyframes err-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
 }

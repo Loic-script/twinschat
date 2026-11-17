@@ -10,6 +10,8 @@ import { ParticipantsSummary } from "@/components/projects/participants-summary"
 import { ProjectPanel } from "@/components/projects/project-panel";
 import { ProjectValidation } from "@/components/projects/project-validation";
 import { requireAdmin } from "@/lib/auth";
+import { mistralConfigured } from "@/lib/mistral";
+import { getTranslationSettings } from "@/lib/translate";
 import { getConversation, listMessages } from "@/lib/messages";
 import {
   ensureProjectConversation,
@@ -29,6 +31,8 @@ export default async function ProjectsPage({
   const requestedId = typeof p === "string" ? p : null;
 
   const admin = await requireAdmin();
+  // Bouton « Traduire » : activé dans le profil admin (français, anglais, malagasy)
+  const translation = await getTranslationSettings(admin.id);
   const project = requestedId ? await getProjectWithOwner(requestedId) : null;
 
   // Discussion du projet (créée au premier accès), puis la liste à jour.
@@ -58,6 +62,8 @@ export default async function ProjectsPage({
       <div className={`h-full min-w-0 flex-1 ${chat ? "block" : "hidden md:block"}`}>
         {project && chat ? (
           <ChatPanel
+            translate={translation}
+            assistant={mistralConfigured()}
             space="admin"
             key={chat.conversation.id}
             conversation={chat.conversation}

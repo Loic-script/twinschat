@@ -4,6 +4,7 @@ import { Fragment, useActionState, useEffect, useState } from "react";
 import { CheckCircle2, Loader2, Save } from "lucide-react";
 import { updateMemberProfile, type MemberField, type MemberProfileState } from "@/app/user/profil/actions";
 import type { MemberProfile } from "@/lib/profile";
+import { CountrySelect } from "@/components/onboarding/country-select";
 import { LanguagePicker } from "./language-picker";
 
 const initialState: MemberProfileState = { status: "idle" };
@@ -17,33 +18,7 @@ type FieldDef = {
   max: number;
   wide?: boolean;
   multiline?: boolean;
-  /** Suggestions (datalist). */
-  list?: string;
 };
-
-/** Suggestions de pays (saisie libre possible). */
-const COUNTRIES = [
-  "Madagascar",
-  "France",
-  "Maurice",
-  "La Réunion",
-  "Comores",
-  "Mayotte",
-  "Seychelles",
-  "Belgique",
-  "Suisse",
-  "Canada",
-  "États-Unis",
-  "Royaume-Uni",
-  "Allemagne",
-  "Espagne",
-  "Italie",
-  "Afrique du Sud",
-  "Sénégal",
-  "Côte d'Ivoire",
-  "Chine",
-  "Japon",
-];
 
 /** Champs regroupés par rubrique ; la société est obligatoire pour une entreprise. */
 function groups(isCompany: boolean): { title: string; fields: FieldDef[] }[] {
@@ -72,7 +47,7 @@ function groups(isCompany: boolean): { title: string; fields: FieldDef[] }[] {
     {
       title: "Adresse",
       fields: [
-        { name: "country", label: "Pays", autoComplete: "country-name", placeholder: "Ex. Madagascar", max: 80, list: "member-countries" },
+        { name: "country", label: "Pays", autoComplete: "country-name", max: 80 },
         { name: "city", label: "Ville", autoComplete: "address-level2", placeholder: "Ex. Antananarivo", max: 80 },
         { name: "address", label: "Adresse", autoComplete: "street-address", max: 200, wide: true },
       ],
@@ -141,12 +116,6 @@ export function MemberProfileForm({ profile }: { profile: MemberProfile }) {
       noValidate
       className="space-y-7"
     >
-      <datalist id="member-countries">
-        {COUNTRIES.map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-
       {groups(isCompany).map((group) => (
         <Fragment key={group.title}>
         {/* Les langues se placent juste avant la présentation */}
@@ -187,10 +156,20 @@ export function MemberProfileForm({ profile }: { profile: MemberProfile }) {
                   <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-foreground/90">
                     {f.label}
                   </label>
-                  {f.multiline ? (
+                  {f.name === "country" ? (
+                    <CountryField
+                      id={id}
+                      defaultValue={defaultValue}
+                      error={error}
+                      onChange={() => {
+                        setDirty(true);
+                        setShowSaved(false);
+                      }}
+                    />
+                  ) : f.multiline ? (
                     <textarea {...common} rows={4} className={`${common.className} resize-y`} />
                   ) : (
-                    <input {...common} type={f.type ?? "text"} autoComplete={f.autoComplete} list={f.list} />
+                    <input {...common} type={f.type ?? "text"} autoComplete={f.autoComplete} />
                   )}
                   {error && (
                     <p id={`${id}-error`} className="mt-1.5 text-xs text-rose-300">
@@ -237,5 +216,33 @@ export function MemberProfileForm({ profile }: { profile: MemberProfile }) {
         </button>
       </div>
     </form>
+  );
+}
+
+/** Pays : liste de tous les pays avec leur drapeau (valeur gardée ici, remise à zéro avec le formulaire). */
+function CountryField({
+  id,
+  defaultValue,
+  error,
+  onChange,
+}: {
+  id: string;
+  defaultValue: string;
+  error?: string;
+  onChange: () => void;
+}) {
+  const [value, setValue] = useState(defaultValue);
+  return (
+    <CountrySelect
+      id={id}
+      name="country"
+      value={value}
+      error={error}
+      variant="field"
+      onChange={(country) => {
+        setValue(country);
+        onChange();
+      }}
+    />
   );
 }
