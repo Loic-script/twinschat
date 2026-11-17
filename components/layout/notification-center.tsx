@@ -19,6 +19,7 @@ import { markNotificationsSeen, updateNotificationPrefs } from "@/lib/actions/no
 import { Avatar } from "@/components/ui/avatar";
 import { displayName, formatRelative } from "@/lib/format";
 import type { NotificationFeed, NotificationItem, NotificationKind, NotificationPrefs, Space } from "@/lib/types";
+import { PushSwitch } from "@/components/layout/push-client";
 
 const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   message: MessageSquare,
@@ -93,16 +94,12 @@ export function NotificationCenter({
   // Notifications non lues au moment de l'ouverture : restent en évidence pendant la consultation.
   const [highlight, setHighlight] = useState<Set<string>>(new Set());
   const [prefs, setPrefs] = useState(feed.prefs);
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const [, startTransition] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => setPrefs(feed.prefs), [feed.prefs]);
-
-  useEffect(() => {
-    setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
-  }, [open]);
+  const prefsKey = JSON.stringify(feed.prefs);
+  useEffect(() => setPrefs(JSON.parse(prefsKey)), [prefsKey]);
 
   // Fermeture au clic extérieur et avec Échap.
   useEffect(() => {
@@ -135,13 +132,7 @@ export function NotificationCenter({
     if (feed.unreadCount > 0) startTransition(() => markNotificationsSeen(space));
   }
 
-  async function changePref(key: keyof NotificationPrefs, value: boolean) {
-    if (key === "navigateur" && value) {
-      if (typeof Notification === "undefined") return;
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      if (result !== "granted") return;
-    }
+  function changePref(key: keyof NotificationPrefs, value: boolean) {
     const next = { ...prefs, [key]: value };
     setPrefs(next);
     startTransition(() => updateNotificationPrefs(space, next));
@@ -235,21 +226,9 @@ export function NotificationCenter({
                   />
                 ))}
               </ul>
-              <p className="mt-5 text-xs font-medium tracking-wide text-muted uppercase">Navigateur</p>
+              <p className="mt-5 text-xs font-medium tracking-wide text-muted uppercase">Sur cet appareil</p>
               <ul className="mt-2">
-                <PrefSwitch
-                  label="Notifications du navigateur"
-                  hint={
-                    permission === "unsupported"
-                      ? "Non prises en charge par ce navigateur"
-                      : permission === "denied"
-                        ? "Bloquées : autorisez-les dans les réglages du site"
-                        : "Alerte système quand l'onglet est en arrière-plan"
-                  }
-                  checked={prefs.navigateur && permission === "granted"}
-                  disabled={permission === "unsupported" || permission === "denied"}
-                  onChange={(v) => changePref("navigateur", v)}
-                />
+                <PushSwitch space={space} />
               </ul>
             </div>
           )}
@@ -361,34 +340,3 @@ function PrefSwitch({
   );
 }
 
-/**
- * Affiche une notification système pour les nouveautés arrivées pendant que
- * l'onglet est en arrière-plan (si l'admin l'a activé). À monter une seule fois.
- */
-export function BrowserNotifier({ feed }: { feed: NotificationFeed }) {
-  const newestSeen = useRef<string | null>(null);
-
-  useEffect(() => {
-    const newest = feed.items[0]?.at ?? null;
-    const previous = newestSeen.current;
-    if (newest) newestSeen.current = newest;
-    if (previous === null || !newest) return; // premier rendu : rien à signaler
-
-    if (!feed.prefs.navigateur || typeof Notification === "undefined") return;
-    if (Notification.permission !== "granted" || document.visibilityState === "visible") return;
-
-    feed.items
-      .filter((n) => n.unread && n.at > previous)
-      .slice(0, 3)
-      .forEach((n) => {
-        const { title, body } = notificationText(n);
-        const notif = new Notification(title, { body, icon: "/brand/twinschat-icon.svg", tag: n.id });
-        notif.onclick = () => {
-          window.focus();
-          window.location.href = n.href;
-        };
-      });
-  }, [feed]);
-
-  return null;
-}

@@ -3,9 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { getActor } from "@/lib/auth";
 import { pool, query } from "@/lib/db";
+import { MAX_FILES_PER_MESSAGE } from "@/lib/attachments";
 import { isMember, isUuid } from "@/lib/messages";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { REACTION_EMOJIS, type Space } from "@/lib/types";
+import { after } from "next/server";
+import { pushNewMessage } from "@/lib/push";
 
 /*
  * Actions des discussions, communes à l'espace admin et à l'espace utilisateur.
@@ -36,7 +39,7 @@ export async function sendMessage(
   attachmentIds: string[] = [],
 ): Promise<ActionResult> {
   const body = rawBody.trim();
-  const ids = [...new Set(attachmentIds)].filter(isUuid);
+  const ids = [...new Set(attachmentIds)].filter(isUuid).slice(0, MAX_FILES_PER_MESSAGE);
   if (!body && ids.length === 0) return { ok: false, error: "Le message est vide." };
   if (body.length > MAX_LENGTH) {
     return { ok: false, error: `Le message dépasse ${MAX_LENGTH} caractères.` };
@@ -44,11 +47,6 @@ export async function sendMessage(
 
   const me = await getActor(space);
   if (!(await isMember(me.id, conversationId))) return NOT_FOUND;
-  // Anti-spam : envois en rafale
-  const limited = rateLimit(`message:${me.id}`, LIMITS.message);
-  if (!limited.ok) {
-    return { ok: false, error: `Vous envoyez beaucoup de messages : patientez ${limited.retryAfterSec} s.` };
-  }
   // Discussion d'un projet encore « Proposé » : fermée jusqu'à la validation par l'admin.
   const [pendingProject] = await query(
     `SELECT 1 FROM conversations c JOIN projects p ON p.id = c.project_id
@@ -57,6 +55,11 @@ export async function sendMessage(
   );
   if (pendingProject) {
     return { ok: false, error: "Le projet doit être validé par l'administration avant de démarrer la discussion." };
+  }
+  // Anti-spam : envois en rafale
+  const limited = rateLimit(`message:${me.id}`, LIMITS.message);
+  if (!limited.ok) {
+    return { ok: false, error: `Vous envoyez beaucoup de messages : patientez ${limited.retryAfterSec} s.` };
   }
 
   const client = await pool.connect();
@@ -89,6 +92,8 @@ export async function sendMessage(
     client.release();
   }
   refresh();
+  // Notification push aux autres membres (après la réponse : l'envoi du message n'attend pas)
+  after(() => pushNewMessage(conversationId, me.id, body, ids.length > 0));
   return { ok: true };
 }
 

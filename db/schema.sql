@@ -223,3 +223,40 @@ CREATE TABLE IF NOT EXISTS message_translations (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (message_id, lang)
 );
+
+-- Notifications push (Web Push) : un abonnement par appareil / navigateur d'un compte.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint     TEXT NOT NULL UNIQUE,
+  p256dh       TEXT NOT NULL,
+  auth         TEXT NOT NULL,
+  user_agent   TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_push_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions (user_id);
+
+-- Index de performance (revue base de données) : flux de notifications, listes, suppressions en cascade.
+CREATE INDEX IF NOT EXISTS messages_conv_created_live_idx
+  ON messages (conversation_id, created_at DESC) INCLUDE (sender_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS messages_sender_idx ON messages (sender_id);
+CREATE INDEX IF NOT EXISTS message_reactions_user_idx ON message_reactions (user_id);
+CREATE INDEX IF NOT EXISTS users_created_at_idx ON users (created_at DESC) WHERE role <> 'admin';
+CREATE INDEX IF NOT EXISTS projects_created_at_idx ON projects (created_at DESC);
+CREATE INDEX IF NOT EXISTS projects_completed_at_idx ON projects (completed_at DESC) WHERE completed_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS projects_paid_at_idx ON projects (paid_at DESC) WHERE paid_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS conversation_members_joined_idx ON conversation_members (user_id, joined_at DESC);
+CREATE INDEX IF NOT EXISTS resource_item_access_granted_idx ON resource_item_access (user_id, granted_at DESC);
+CREATE INDEX IF NOT EXISTS resource_item_access_granted_by_idx ON resource_item_access (granted_by) WHERE granted_by IS NOT NULL;
+CREATE INDEX IF NOT EXISTS attachments_conversation_idx ON attachments (conversation_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS attachments_uploaded_by_idx ON attachments (uploaded_by);
+CREATE INDEX IF NOT EXISTS attachments_unsent_idx ON attachments (created_at) WHERE message_id IS NULL;
+CREATE INDEX IF NOT EXISTS resource_folders_owner_idx ON resource_folders (created_by, updated_at DESC);
+CREATE INDEX IF NOT EXISTS folder_items_folder_idx ON resource_folder_items (folder_id, added_at DESC);
+CREATE INDEX IF NOT EXISTS folder_items_attachment_idx ON resource_folder_items (attachment_id) WHERE attachment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS folder_items_source_msg_idx ON resource_folder_items (source_message_id) WHERE source_message_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS folder_items_added_by_idx ON resource_folder_items (added_by) WHERE added_by IS NOT NULL;
+CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions (expires_at);
+-- Connexion et inscription cherchent par lower(email) : index dédié, et unicité insensible à la casse
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_idx ON users (lower(email));

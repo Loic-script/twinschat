@@ -84,6 +84,12 @@ export async function createSession(userId: string) {
   });
 }
 
+/** Ferme toutes les autres sessions du compte (après un changement de mot de passe). */
+export async function revokeOtherSessions(userId: string) {
+  const token = (await cookies()).get(COOKIE)?.value;
+  await query("DELETE FROM sessions WHERE user_id = $1 AND id <> $2", [userId, token ? digest(token) : ""]);
+}
+
 /** Ferme la session en cours (déconnexion). */
 export async function deleteSession() {
   const store = await cookies();

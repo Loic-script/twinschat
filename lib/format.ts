@@ -81,6 +81,9 @@ export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(LOCALE, { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Texte comparable pour la recherche : sans accents ni majuscules (« Été » → « ete »). */
+export const normalizeSearch = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("fr");
+
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   propose: "Proposé",
   en_cours: "En cours",

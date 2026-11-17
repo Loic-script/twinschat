@@ -283,7 +283,7 @@ export function OnboardingWizard({
 
         {step === 3 && (
           <StepPanel visible dir={dir}>
-            <PhotoStep isCompany={isCompany} name={values.name} onDone={() => router.push("/user")} />
+            <PhotoStep isCompany={isCompany} name={values.name} onDone={() => router.push("/user/guide?bienvenue=1")} />
           </StepPanel>
         )}
 

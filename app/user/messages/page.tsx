@@ -306,6 +306,9 @@ function Welcome({ name, directHref, notFound }: { name: string; directHref: str
           <ProjectIcon className="size-4" /> Proposer un projet
         </Link>
       </div>
+      <Link href="/user/guide" className="mt-1 text-sm font-medium text-accent-strong hover:underline">
+        Découvrir le guide d&apos;utilisation
+      </Link>
     </div>
   );
 }

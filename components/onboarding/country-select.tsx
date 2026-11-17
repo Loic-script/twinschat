@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Globe, Search } from "lucide-react";
 import { countryOptions, SUGGESTED_COUNTRIES, type Country } from "@/lib/countries";
+import { normalizeSearch } from "@/lib/format";
 
-const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("fr");
+const normalize = normalizeSearch;
 
 /** Drapeau du pays (SVG 3:2 dans public/flags, issus de country-flag-icons, licence MIT). */
 function Flag({ code }: { code: string }) {

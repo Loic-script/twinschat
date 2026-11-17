@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { pool, query } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { ensureDirectConversation, isUuid } from "@/lib/messages";
+import { after } from "next/server";
+import { pushProjectUpdate } from "@/lib/push";
 
 export type DeleteUserResult = { ok: true } | { ok: false; error: string };
 export type ProjectActionResult = DeleteUserResult;
@@ -29,22 +31,26 @@ async function runProjectUpdate(sql: string, params: unknown[]): Promise<Project
 
 /** Marque un projet comme terminé, ou le rouvre (retour « en cours »). */
 export async function setProjectCompleted(projectId: string, done: boolean) {
-  return runProjectUpdate(
+  const res = await runProjectUpdate(
     done
-      ? "UPDATE projects SET status = 'termine', completed_at = now() WHERE id = $1"
-      : "UPDATE projects SET status = 'en_cours', completed_at = NULL WHERE id = $1",
+      ? "UPDATE projects SET status = 'termine', completed_at = now() WHERE id = $1 AND status = 'en_cours'"
+      : "UPDATE projects SET status = 'en_cours', completed_at = NULL WHERE id = $1 AND status = 'termine'",
     [projectId],
   );
+  if (res.ok && done) after(() => pushProjectUpdate(projectId, "termine"));
+  return res;
 }
 
 /** Marque un projet comme payé (date du jour), ou annule le paiement. */
 export async function setProjectPaid(projectId: string, paid: boolean) {
-  return runProjectUpdate(
+  const res = await runProjectUpdate(
     paid
       ? "UPDATE projects SET paid_at = now() WHERE id = $1"
       : "UPDATE projects SET paid_at = NULL WHERE id = $1",
     [projectId],
   );
+  if (res.ok && paid) after(() => pushProjectUpdate(projectId, "paye"));
+  return res;
 }
 
 /** Associe un lien (http/https) au projet, ou le retire si la valeur est vide. */

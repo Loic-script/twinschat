@@ -99,5 +99,7 @@ export async function translateInBrowser(
   const body = from === target ? text : await (await translatorFor(from, target, onProgress)).translate(text);
   const result = { body, from };
   results.set(cacheKey, result);
+  // Au plus 500 traductions gardées : la plus ancienne est oubliée
+  if (results.size > 500) results.delete(results.keys().next().value!);
   return result;
 }

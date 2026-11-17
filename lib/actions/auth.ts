@@ -6,6 +6,8 @@ import { query } from "@/lib/db";
 import { hashPassword, passwordProblem, verifyPassword } from "@/lib/password";
 import { clientIp, LIMITS, MIN_FORM_MS, rateLimit, retryMessage } from "@/lib/rate-limit";
 import type { Role } from "@/lib/types";
+import { after } from "next/server";
+import { pushNewUser } from "@/lib/push";
 
 export type AuthField = "email" | "password" | "confirm";
 
@@ -60,6 +62,10 @@ function nameFromEmail(email: string) {
   return words.join(" ") || "Nouvel utilisateur";
 }
 
+let dummy: Promise<string> | null = null;
+/** Empreinte factice (calculée une fois) pour les connexions avec une adresse inconnue. */
+const dummyHash = () => (dummy ??= hashPassword(`factice-${Date.now()}`));
+
 /** Connexion (admin et utilisateurs) : chacun arrive dans son espace. */
 export async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const email = readEmail(formData);
@@ -81,7 +87,10 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
     "SELECT id, role, password_hash FROM users WHERE lower(email) = $1",
     [email],
   );
-  const valid = user?.password_hash ? await verifyPassword(password, user.password_hash) : false;
+  // Adresse inconnue : vérification factice, pour une durée de réponse identique
+  const valid = user?.password_hash
+    ? await verifyPassword(password, user.password_hash)
+    : (await verifyPassword(password, await dummyHash()), false);
   if (!user || !valid) {
     recordFailure(email);
     // Même message dans les deux cas : on ne révèle pas si l'adresse existe.
@@ -131,6 +140,8 @@ export async function register(_prev: AuthState, formData: FormData): Promise<Au
   );
   if (!user) return taken;
 
+  // Notification push à l'administration (nouvelle inscription)
+  after(() => pushNewUser(user.id));
   await createSession(user.id);
   redirect("/bienvenue");
 }

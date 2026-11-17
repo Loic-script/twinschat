@@ -4,9 +4,11 @@ import { unlink } from "node:fs/promises";
 import { revalidatePath } from "next/cache";
 import { getActor, requireAdmin, requireMember } from "@/lib/auth";
 import { pool, query } from "@/lib/db";
-import { isUuid } from "@/lib/messages";
+import { getAdminAccount, isUuid } from "@/lib/messages";
 import { storagePath } from "@/lib/storage";
 import type { Space } from "@/lib/types";
+import { after } from "next/server";
+import { pushSharedItem } from "@/lib/push";
 
 /*
  * Dossiers de ressources, communs aux deux espaces. Chaque compte ne gère que ses
@@ -226,12 +228,14 @@ export async function grantItemAccess(itemId: string, userIds: string[]): Promis
   if (!(await adminOwnsItem(itemId, admin.id))) return { ok: false, error: "Élément introuvable." };
 
   // Seuls des utilisateurs existants (hors admin) peuvent recevoir l'accès.
-  await query(
+  const granted = await query<{ user_id: string }>(
     `INSERT INTO resource_item_access (item_id, user_id, granted_by)
      SELECT $1, u.id, $3 FROM users u WHERE u.id = ANY($2::uuid[]) AND u.role <> 'admin'
-     ON CONFLICT (item_id, user_id) DO NOTHING`,
+     ON CONFLICT (item_id, user_id) DO NOTHING
+     RETURNING user_id`,
     [itemId, ids, admin.id],
   );
+  if (granted.length > 0) after(() => pushSharedItem(itemId, granted.map((g) => g.user_id)));
   refresh();
   revalidatePath("/user", "layout"); // notification « partagé avec vous »
   return { ok: true };
@@ -257,7 +261,8 @@ export async function revokeItemAccess(itemId: string, userId: string): Promise<
  */
 export async function setAdminAccess(itemId: string, allow: boolean): Promise<FolderResult> {
   if (!isUuid(itemId)) return { ok: false, error: "Élément invalide." };
-  const [me, admin] = await Promise.all([requireMember(), requireAdmin()]);
+  // Compte utilisateur connecté ; l'administration est le compte admin (et non la session courante)
+  const [me, admin] = await Promise.all([requireMember(), getAdminAccount()]);
   const owned = await query(
     `SELECT 1 FROM resource_folder_items i JOIN resource_folders f ON f.id = i.folder_id
       WHERE i.id = $1 AND f.created_by = $2`,

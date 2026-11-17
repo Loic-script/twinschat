@@ -35,10 +35,11 @@ export function rateLimit(key: string, { limit, windowMs }: { limit: number; win
   return { ok: true };
 }
 
-/** Adresse IP du visiteur (derrière un proxy : première adresse de x-forwarded-for). */
+/** Adresse IP du visiteur : X-Real-IP du proxy, sinon la dernière adresse de X-Forwarded-For. */
 export async function clientIp() {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "inconnue";
+  const forwarded = h.get("x-forwarded-for")?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
+  return h.get("x-real-ip")?.trim() || forwarded.at(-1) || "inconnue";
 }
 
 /** Message d'attente lisible (« dans 2 minutes », « dans 30 secondes »). */
@@ -55,6 +56,8 @@ export const LIMITS = {
   login: { limit: 20, windowMs: 15 * 60_000 },
   /** Connexions Google lancées par adresse IP. */
   google: { limit: 20, windowMs: 10 * 60_000 },
+  /** Envois de fichiers par compte (pièces jointes, imports). */
+  upload: { limit: 30, windowMs: 10 * 60_000 },
   /** Messages envoyés par compte. */
   message: { limit: 20, windowMs: 60_000 },
   /** Réponses rédigées par Mistral, par compte admin. */

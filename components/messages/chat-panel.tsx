@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   useTransition,
+  useMemo,
   type ReactNode,
 } from "react";
 import {
@@ -29,7 +30,7 @@ import {
 } from "lucide-react";
 import { deleteMessage, editMessage, markAsRead, toggleReaction, togglePin } from "@/lib/actions/messages";
 import { draftReplyWithMistral } from "@/lib/actions/assistant";
-import { translateMessages } from "@/lib/actions/translate";
+import { setTranslationEnabled, translateMessages } from "@/lib/actions/translate";
 import { BrowserTranslationError, browserTranslationSupported, translateInBrowser, warmUp, type BrowserTranslation } from "@/components/messages/browser-translator";
 import { Composer } from "@/components/messages/composer";
 import { LinkPreview, MessageAttachments } from "@/components/messages/message-attachments";
@@ -161,6 +162,9 @@ export function ChatPanel({
   const [translating, setTranslating] = useState(false);
   const [originals, setOriginals] = useState<Set<string>>(() => new Set());
   const requested = useRef(new Set<string>());
+  // Traductions en cours (plusieurs lancements peuvent se chevaucher) et langue courante (arrête les anciennes)
+  const inflight = useRef(0);
+  const langRef = useRef<string | null>(null);
 
   // Réponse proposée par Mistral : placée dans la zone de saisie, jamais envoyée automatiquement
   const [injected, setInjected] = useState<{ id: number; text: string } | null>(null);
@@ -191,7 +195,24 @@ export function ChatPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- uniquement à l'ouverture
   }, []);
 
+  // Traduction activée ou non (interrupteur du menu « Traduire », même réglage que le profil)
+  const [translationOn, setTranslationOn] = useState(translate?.enabled ?? false);
+  useEffect(() => setTranslationOn(translate?.enabled ?? false), [translate?.enabled]);
+
+  function toggleTranslation(next: boolean) {
+    setTranslationOn(next);
+    if (!next) chooseLanguage(null);
+    startTransition(async () => {
+      try {
+        await setTranslationEnabled(space, next);
+      } catch {
+        setTranslationOn(!next);
+      }
+    });
+  }
+
   function chooseLanguage(next: string | null) {
+    langRef.current = next;
     // Dans le clic : le navigateur peut télécharger le modèle de détection de langue
     if (next && !translate?.server) warmUp();
     setLang(next);
@@ -251,7 +272,7 @@ export function ChatPanel({
   // Langue choisie : traduit les messages reçus pas encore traduits (les plus récents d'abord).
   // Le serveur (IA Mistral) d'abord ; s'il est indisponible (pas de clé, quota atteint), le navigateur prend le relais.
   useEffect(() => {
-    if (!lang || !translate?.enabled) return;
+    if (!lang || !translationOn) return;
     const keyOf = (m: UiMessage) => `${lang}:${m.id}:${m.body}`;
     const todo = optimistic
       .filter((m) => m.senderId !== meId && !m.deleted && !m.pending && m.body.trim())
@@ -269,10 +290,13 @@ export function ChatPanel({
       setLang((current) => (current === lang ? null : current));
     };
 
+    langRef.current = lang;
+    inflight.current += 1;
     setTranslating(true);
     void (async () => {
+      try {
       let rest = todo;
-      if (translate.server) {
+      if (translate?.server) {
         while (rest.length > 0) {
           const chunk = rest.slice(0, SERVER_CHUNK);
           const res = await translateMessages(space, conversation.id, chunk.map((m) => m.id), lang).catch(() => null);
@@ -283,7 +307,6 @@ export function ChatPanel({
           }
           if (res && !res.fallback) {
             fail(rest, res.error);
-            setTranslating(false);
             return;
           }
           break; // Mistral indisponible : le navigateur traduit le reste
@@ -292,14 +315,15 @@ export function ChatPanel({
       if (rest.length > 0 && !browserTranslationSupported()) {
         fail(
           rest,
-          translate.server
+          translate?.server
             ? "La traduction est momentanément indisponible. Réessayez plus tard."
             : "La traduction nécessite Chrome sur ordinateur (version 138 ou plus récente).",
         );
-        setTranslating(false);
         return;
       }
       for (const [i, m] of rest.entries()) {
+        // Langue changée ou traduction désactivée entre-temps : inutile de continuer
+        if (langRef.current !== lang) break;
         try {
           save(m, await translateInBrowser(m.body, lang));
         } catch (err) {
@@ -309,15 +333,18 @@ export function ChatPanel({
           break;
         }
       }
-      setTranslating(false);
+      } finally {
+        inflight.current -= 1;
+        setTranslating(inflight.current > 0);
+      }
     })();
-  }, [lang, optimistic, meId, space, conversation.id, translate?.enabled, translate?.server]);
+  }, [lang, optimistic, meId, space, conversation.id, translationOn, translate?.server]);
 
   // Traduction désactivée dans le profil : on revient aux messages originaux
-  const activeLang = translate?.enabled ? lang : null;
+  const activeLang = translationOn ? lang : null;
 
-  const pinned = optimistic.filter((m) => m.pinned && !m.deleted);
-  const groups = groupMessages(optimistic, meId);
+  const pinned = useMemo(() => optimistic.filter((m) => m.pinned && !m.deleted), [optimistic]);
+  const groups = useMemo(() => groupMessages(optimistic, meId), [optimistic, meId]);
   const contactReadAt = conversation.contactLastReadAt ? +new Date(conversation.contactLastReadAt) : 0;
 
   function runAction(action: () => Promise<{ ok: boolean; error?: string }>) {
@@ -405,7 +432,8 @@ export function ChatPanel({
           {translate && (
             <TranslateMenu
               languages={translate.languages}
-              enabled={translate.enabled}
+              enabled={translationOn}
+              onToggleEnabled={toggleTranslation}
               server={translate.server}
               settingsHref={space === "admin" ? "/admin/profil" : "/user/profil"}
               value={activeLang}
@@ -790,7 +818,7 @@ function MessageBubble({
       {canAct && (
         <div
           className={`relative flex shrink-0 items-center gap-0.5 transition-opacity ${
-            confirmingDelete || pickerOpen || drafting ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+            confirmingDelete || pickerOpen || drafting ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100"
           }`}
         >
           {confirmingDelete ? (
@@ -934,10 +962,12 @@ function TranslateMenu({
   value,
   busy,
   onChange,
+  onToggleEnabled,
 }: {
   languages: string[];
-  /** Désactivée dans le profil : le menu propose seulement de l'activer. */
+  /** Traduction activée (interrupteur du menu, même réglage que le profil). */
   enabled: boolean;
+  onToggleEnabled: (next: boolean) => void;
   /** Le serveur (Mistral) traduit : peu importe le navigateur. */
   server: boolean;
   settingsHref: string;
@@ -994,11 +1024,29 @@ function TranslateMenu({
           aria-label="Traduire les messages"
           className="absolute top-full right-0 z-30 mt-2 w-64 origin-top-right rounded-2xl border border-border bg-surface p-1.5 shadow-2xl shadow-black/60 motion-safe:animate-select-in"
         >
-          <p className="px-3 pt-2 pb-1.5 text-[11px] font-medium tracking-wide text-muted uppercase">Traduire les messages en</p>
+          <div className="flex items-center gap-3 px-3 pt-2 pb-1.5">
+            <p className="min-w-0 flex-1 text-[11px] font-medium tracking-wide text-muted uppercase">Traduire les messages en</p>
+            {/* Activer / désactiver la traduction (enregistré dans le compte) */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={enabled}
+              aria-label={enabled ? "Désactiver la traduction" : "Activer la traduction"}
+              title={enabled ? "Désactiver la traduction" : "Activer la traduction"}
+              onClick={() => onToggleEnabled(!enabled)}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong ${
+                enabled ? "bg-accent" : "bg-surface-2 ring-1 ring-border"
+              }`}
+            >
+              <span
+                className={`inline-block size-4 rounded-full bg-foreground shadow transition-transform ${
+                  enabled ? "translate-x-[18px]" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
           {!enabled ? (
-            <p className="px-3 py-2 text-sm text-muted">
-              La traduction est désactivée. Activez-la dans votre profil.
-            </p>
+            <p className="px-3 py-2 text-sm text-muted">La traduction est désactivée : activez-la avec le bouton ci-dessus.</p>
           ) : !server && !supported ? (
             <p className="px-3 py-2 text-sm text-muted">
               La traduction se fait dans le navigateur : ouvrez TwinsChat dans Chrome sur ordinateur (version 138 ou plus récente).
@@ -1028,10 +1076,10 @@ function TranslateMenu({
           <div className="mt-1 border-t border-border/60 pt-1">
             <Link
               href={settingsHref}
-              className={`${item} ${enabled ? "text-xs text-muted hover:text-foreground" : "font-medium text-accent-strong"}`}
+              className={`${item} text-xs text-muted hover:text-foreground`}
               onClick={() => setOpen(false)}
             >
-              {enabled ? "Réglages de traduction" : "Activer la traduction"}
+              Réglages de traduction
             </Link>
           </div>
         </div>

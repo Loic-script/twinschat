@@ -2,6 +2,8 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { query } from "./db";
 import type { Role } from "./types";
+import { after } from "next/server";
+import { pushNewUser } from "./push";
 
 /*
  * Connexion avec Google (OAuth 2.0 / OpenID Connect, flux « code » + PKCE) :
@@ -103,7 +105,14 @@ export async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<{ 
     if (byEmail.google_sub && byEmail.google_sub !== profile.sub) {
       throw new Error("Cette adresse est déjà liée à un autre compte Google.");
     }
-    await query("UPDATE users SET google_sub = $2 WHERE id = $1", [byEmail.id, profile.sub]);
+    // Google prouve la possession de l'adresse : un mot de passe défini auparavant par quelqu'un d'autre
+    // (inscription sans vérification d'e-mail) est annulé, et ses sessions fermées. Le compte admin est exclu.
+    if (byEmail.role === "admin") {
+      await query("UPDATE users SET google_sub = $2 WHERE id = $1", [byEmail.id, profile.sub]);
+    } else {
+      await query("UPDATE users SET google_sub = $2, password_hash = NULL WHERE id = $1", [byEmail.id, profile.sub]);
+      await query("DELETE FROM sessions WHERE user_id = $1", [byEmail.id]);
+    }
     return { id: byEmail.id, role: byEmail.role };
   }
 
@@ -115,5 +124,6 @@ export async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<{ 
     [profile.name ?? profile.email.split("@")[0], profile.email, profile.sub],
   );
   if (!created) throw new Error("Création du compte Google impossible.");
+  after(() => pushNewUser(created.id));
   return created;
 }

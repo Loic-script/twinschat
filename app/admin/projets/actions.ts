@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { isUuid } from "@/lib/messages";
+import { after } from "next/server";
+import { pushAddedToProject, pushProjectUpdate } from "@/lib/push";
 
 export type ParticipantResult = { ok: true } | { ok: false; error: string };
 
@@ -31,13 +33,15 @@ export async function addProjectParticipants(conversationId: string, userIds: st
   if (!ctx) return { ok: false, error: "Discussion de projet introuvable." };
 
   // Les nouveaux participants ne voient pas l'historique comme « non lu ».
-  await query(
+  const added = await query<{ user_id: string }>(
     `INSERT INTO conversation_members (conversation_id, user_id, last_read_at)
      SELECT $1, u.id, now() FROM users u
       WHERE u.id = ANY($2::uuid[]) AND u.role <> 'admin'
-     ON CONFLICT (conversation_id, user_id) DO NOTHING`,
+     ON CONFLICT (conversation_id, user_id) DO NOTHING
+     RETURNING user_id`,
     [conversationId, ids],
   );
+  if (added.length > 0) after(() => pushAddedToProject(conversationId, added.map((a) => a.user_id)));
   revalidatePath("/admin", "layout");
   return { ok: true };
 }
@@ -48,6 +52,7 @@ export async function removeProjectParticipant(conversationId: string, userId: s
   const ctx = await projectConversation(conversationId);
   if (!ctx) return { ok: false, error: "Discussion de projet introuvable." };
   if (userId === ctx.ownerId) return { ok: false, error: "L'auteur du projet ne peut pas être retiré." };
+  if (userId === ctx.admin.id) return { ok: false, error: "L'administration ne peut pas être retirée de la discussion." };
 
   await query("DELETE FROM conversation_members WHERE conversation_id = $1 AND user_id = $2", [
     conversationId,
@@ -69,6 +74,7 @@ export async function validateProject(projectId: string): Promise<ParticipantRes
     [projectId],
   );
   if (updated.length === 0) return { ok: false, error: "Ce projet n'est plus en attente de validation." };
+  after(() => pushProjectUpdate(projectId, "valide"));
   revalidatePath("/admin", "layout");
   revalidatePath("/user", "layout");
   return { ok: true };

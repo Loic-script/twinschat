@@ -38,7 +38,7 @@ function useReducedMotion() {
 
 /** Compteur animé : défile jusqu'à la valeur (et d'une valeur à l'autre quand elle change). */
 function CountUp({ value, reduced }: { value: number; reduced: boolean }) {
-  const [shown, setShown] = useState(value);
+  const [shown, setShown] = useState(reduced ? value : 0);
   const from = useRef(0);
 
   useEffect(() => {

@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import { Check, Plus, Search, X } from "lucide-react";
 import { ALL_LANGUAGE_CODES, languageName, MAIN_LANGUAGES } from "@/lib/languages";
+import { normalizeSearch } from "@/lib/format";
 
 const MAIN = new Set<string>(MAIN_LANGUAGES);
-const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("fr");
+const normalize = normalizeSearch;
 
 const chip = (on: boolean) =>
   `inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors ${

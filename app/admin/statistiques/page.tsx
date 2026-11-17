@@ -7,7 +7,7 @@ import { ProjectStats, type StatFilter } from "@/components/projects/project-sta
 import { Avatar } from "@/components/ui/avatar";
 import { ProjectStatusBadge } from "@/components/users/project-status-badge";
 import { requireAdmin } from "@/lib/auth";
-import { displayName, formatDate } from "@/lib/format";
+import { displayName, formatDate, normalizeSearch } from "@/lib/format";
 import { listAllProjects, projectStats, type ProjectWithAuthor } from "@/lib/projects";
 
 export const metadata: Metadata = { title: "Statistiques" };
@@ -23,7 +23,7 @@ const FILTERS: { value: StatFilter | null; label: string }[] = [
 const isFilter = (v: unknown): v is StatFilter =>
   v === "propose" || v === "en_cours" || v === "termine" || v === "paye";
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("fr");
+const normalize = normalizeSearch;
 
 function matches(p: ProjectWithAuthor, filter: StatFilter | null, q: string) {
   if (filter === "paye" && !p.paidAt) return false;

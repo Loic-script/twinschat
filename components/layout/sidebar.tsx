@@ -3,16 +3,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartColumn, FolderOpen, MessagesSquare, UserRound, Users, type LucideIcon } from "lucide-react";
+import { BookOpen, ChartColumn, FolderOpen, MessagesSquare, UserRound, Users, type LucideIcon } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { LogoMark } from "@/components/brand/logo";
 import { ProjectIcon } from "@/components/brand/project-icon";
-import { BrowserNotifier, NotificationCenter } from "@/components/layout/notification-center";
+import { NotificationCenter } from "@/components/layout/notification-center";
+import { PushBridge } from "@/components/layout/push-client";
 import { initials } from "@/lib/format";
 import type { NotificationFeed, Space } from "@/lib/types";
 
 /** `short` : libellé de la barre du bas sur mobile, si le libellé complet est trop long. */
-type NavItem = { href: string; label: string; short?: string; icon: LucideIcon | typeof ProjectIcon };
+/** `desktopOnly` : seulement dans la barre latérale (la barre du bas mobile est limitée à 5 boutons). */
+type NavItem = { href: string; label: string; short?: string; icon: LucideIcon | typeof ProjectIcon; desktopOnly?: boolean };
 
 /** Menus de chaque espace (les icônes restent côté client : pas de composants en props). */
 const SPACES: Record<Space, { label: string; home: string; profile: { href: string; label: string }; nav: NavItem[] }> = {
@@ -36,6 +38,7 @@ const SPACES: Record<Space, { label: string; home: string; profile: { href: stri
       { href: "/user/messages", label: "Messages", icon: MessagesSquare },
       { href: "/user/projets", label: "Projets", icon: ProjectIcon },
       { href: "/user/ressources", label: "Ressources", icon: FolderOpen },
+      { href: "/user/guide", label: "Guide d'utilisation", icon: BookOpen, desktopOnly: true },
     ],
   },
 };
@@ -58,31 +61,32 @@ export function AppSidebar({
 
   // Dernier passage dans chaque rubrique (mémorisé sur l'appareil) : le point vert ne signale que les nouveautés depuis.
   const visitedKey = `twinschat:rubriques-vues:${space}`;
-  const [visited, setVisited] = useState<Record<string, string>>({});
+  // `null` tant que l'appareil n'a pas été lu : aucun point affiché (évite un clignotement au chargement)
+  const [visited, setVisited] = useState<Record<string, string> | null>(null);
   useEffect(() => {
+    let stored: Record<string, string> = {};
     try {
-      setVisited(JSON.parse(localStorage.getItem(visitedKey) ?? "{}"));
+      stored = JSON.parse(localStorage.getItem(visitedKey) ?? "{}");
     } catch {
       /* stockage indisponible */
     }
-  }, [visitedKey]);
-  useEffect(() => {
+    // Rubrique ouverte : marquée comme vue maintenant
     const section = nav.find((n) => isActive(n.href));
-    if (!section) return;
-    setVisited((v) => {
-      const next = { ...v, [section.href]: new Date().toISOString() };
+    const next = section ? { ...stored, [section.href]: new Date().toISOString() } : stored;
+    if (section) {
       try {
         localStorage.setItem(visitedKey, JSON.stringify(next));
       } catch {
         /* stockage indisponible */
       }
-      return next;
-    });
+    }
+    setVisited(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- à chaque changement de page
-  }, [pathname]);
+  }, [pathname, visitedKey]);
 
   /** Notification non lue qui mène à cette rubrique, arrivée depuis le dernier passage (et pas sur la page en cours). */
   const hasNews = (href: string) =>
+    visited !== null &&
     !isActive(href) &&
     notifications.items.some(
       (i) =>
@@ -93,7 +97,8 @@ export function AppSidebar({
 
   return (
     <>
-      <BrowserNotifier feed={notifications} />
+      {/* Notifications push : service worker, abonnement de l'appareil, mise à jour en temps réel */}
+      <PushBridge space={space} />
 
       {/* Rail vertical (tablette et bureau) */}
       <nav aria-label={label} className="hidden w-[92px] shrink-0 flex-col items-center gap-4 py-7 md:flex">
@@ -149,7 +154,7 @@ export function AppSidebar({
         aria-label={label}
         className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-surface px-2 py-1.5 md:hidden"
       >
-        {nav.map(({ href, label: itemLabel, short, icon: Icon }) => (
+        {nav.filter((n) => !n.desktopOnly).map(({ href, label: itemLabel, short, icon: Icon }) => (
           <Link
             key={href}
             href={href}

@@ -5,6 +5,8 @@ import { requireMember } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { getAdminAccount } from "@/lib/messages";
 import { ensureProjectConversation } from "@/lib/projects";
+import { after } from "next/server";
+import { pushNewProject } from "@/lib/push";
 
 export type ProjectField = "title" | "category" | "description";
 
@@ -59,6 +61,7 @@ export async function createProject(_prev: NewProjectState, formData: FormData):
   // La discussion du projet est prête tout de suite, côté utilisateur comme côté admin.
   const admin = await getAdminAccount();
   await ensureProjectConversation(project.id, me.id, admin.id);
+  after(() => pushNewProject(project.id));
 
   revalidatePath("/user", "layout");
   revalidatePath("/admin", "layout");

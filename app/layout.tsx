@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Outfit } from "next/font/google";
 import { CookieNotice } from "@/components/legal/cookie-notice";
 import { siteUrl } from "@/lib/site";
@@ -10,7 +10,13 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: { default: "TwinsChat", template: "%s · TwinsChat" },
   description: "Messagerie entre utilisateurs, clients et entreprises.",
+  // Application installable (écran d'accueil) : indispensable aux notifications push sur iPhone
+  applicationName: "TwinsChat",
+  appleWebApp: { capable: true, title: "TwinsChat", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
+
+export const viewport: Viewport = { themeColor: "#05090b" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -10,12 +10,21 @@ function createPool() {
   if (!connectionString) {
     throw new Error("DATABASE_URL manquant : ajoutez-le dans .env.local");
   }
-  return new Pool({ connectionString, max: 10 });
+  const pool = new Pool({
+    connectionString,
+    max: 10,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+    statement_timeout: 15_000,
+  });
+  // Connexion inactive coupée (redémarrage de PostgreSQL…) : journalisée au lieu d'arrêter le processus
+  pool.on("error", (err) => console.error("[pg] connexion inactive perdue :", err.message));
+  return pool;
 }
 
-// Réutilise le pool entre les rechargements à chaud en développement.
+// Un seul pool par processus (rechargements à chaud en développement, plusieurs bundles en production).
 export const pool = globalThis.__twinslackPool ?? createPool();
-if (process.env.NODE_ENV !== "production") globalThis.__twinslackPool = pool;
+globalThis.__twinslackPool = pool;
 
 export async function query<T extends QueryResultRow>(text: string, params: unknown[] = []) {
   const result = await pool.query<T>(text, params);

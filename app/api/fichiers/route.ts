@@ -1,13 +1,29 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
-import { NextResponse } from "next/server";
-import { checkFile, MAX_FILES_PER_MESSAGE, resolveMime } from "@/lib/attachments";
-import { getActor, isSpace } from "@/lib/auth";
+import { after, NextResponse } from "next/server";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { checkFile, MAX_FILE_SIZE, MAX_FILES_PER_MESSAGE, resolveMime } from "@/lib/attachments";
+import { getActor, getSessionUser, isSpace } from "@/lib/auth";
 import { pool, query } from "@/lib/db";
 import { isMember, isUuid } from "@/lib/messages";
 import { storagePath, uploadDir } from "@/lib/storage";
 
 const fail = (error: string, status = 400) => NextResponse.json({ error }, { status });
+
+/** Fichiers déposés mais jamais rattachés à un message ni à un dossier depuis plus de 24 h : supprimés (base et disque). */
+async function purgeUnsentUploads() {
+  try {
+    const gone = await query<{ storage_key: string }>(
+      `DELETE FROM attachments a
+        WHERE a.message_id IS NULL AND a.created_at < now() - interval '1 day'
+          AND NOT EXISTS (SELECT 1 FROM resource_folder_items i WHERE i.attachment_id = a.id)
+        RETURNING a.storage_key`,
+    );
+    await Promise.all(gone.map((g) => unlink(storagePath(g.storage_key)).catch(() => {})));
+  } catch (err) {
+    console.error("[fichiers] nettoyage impossible", err);
+  }
+}
 
 /**
  * Reçoit les fichiers d'un message avant son envoi (ou d'un import dans un dossier).
@@ -15,6 +31,11 @@ const fail = (error: string, status = 400) => NextResponse.json({ error }, { sta
  * `space` (admin ou user) : espace de la page, qui désigne le compte qui envoie.
  */
 export async function POST(request: Request) {
+  // Pas de lecture du corps (jusqu'à 500 Mo) sans session, ni au-delà de la taille maximale d'un envoi
+  if (!(await getSessionUser())) return fail("Connexion requise.", 401);
+  const announced = Number(request.headers.get("content-length") ?? 0);
+  if (announced > MAX_FILES_PER_MESSAGE * MAX_FILE_SIZE + 1024 * 1024) return fail("Envoi trop volumineux.", 413);
+
   let form: FormData;
   try {
     form = await request.formData();
@@ -32,6 +53,8 @@ export async function POST(request: Request) {
   const space = form.get("space");
   if (!isSpace(space)) return fail("Espace invalide.");
   const me = await getActor(space);
+  if (!rateLimit(`upload:${me.id}`, LIMITS.upload).ok) return fail("Trop d'envois de fichiers : patientez quelques minutes.", 429);
+  after(purgeUnsentUploads);
   if (conversationId && !(await isMember(me.id, conversationId))) return fail("Discussion introuvable.", 403);
   if (folderId) {
     // Import direct : seulement dans un de ses propres dossiers.

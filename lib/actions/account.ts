@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getActor } from "@/lib/auth";
+import { getActor, revokeOtherSessions } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { hashPassword, passwordProblem, verifyPassword } from "@/lib/password";
 
@@ -46,6 +46,8 @@ export async function changePassword(_prev: PasswordState, formData: FormData): 
   if (Object.keys(errors).length > 0) return { status: "error", message: "Mot de passe non modifié.", errors };
 
   await query("UPDATE users SET password_hash = $2 WHERE id = $1", [me.id, await hashPassword(next)]);
+  // Les autres appareils connectés doivent se reconnecter avec le nouveau mot de passe
+  await revokeOtherSessions(me.id);
   revalidatePath(space === "admin" ? "/admin/profil" : "/user/profil");
   return {
     status: "success",

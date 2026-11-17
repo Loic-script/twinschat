@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { CalendarDays, Mail } from "lucide-react";
+import Link from "next/link";
+import { BookOpen, CalendarDays, Mail } from "lucide-react";
 import { ProjectIcon } from "@/components/brand/project-icon";
 import { MemberProfileForm } from "@/components/espace/member-profile-form";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -54,6 +55,23 @@ export default async function MemberProfilePage() {
             </div>
           </div>
         </section>
+
+        {/* Guide d'utilisation (accès principal sur mobile) */}
+        <Link
+          href="/user/guide"
+          className="group mt-6 flex items-center gap-4 rounded-[24px] border border-accent/30 bg-accent/[0.07] p-5 transition hover:border-accent/50 hover:bg-accent/[0.1]"
+        >
+          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent-strong">
+            <BookOpen className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold group-hover:text-accent-strong">Guide d&apos;utilisation</span>
+            <span className="block text-sm text-muted">Messages, projets, ressources, notifications : tout est expliqué pas à pas.</span>
+          </span>
+          <span aria-hidden className="text-lg text-muted group-hover:text-accent-strong">
+            →
+          </span>
+        </Link>
 
         {/* Informations */}
         <section className="mt-6 rounded-[24px] border border-border/60 bg-surface-2/35 p-6">
