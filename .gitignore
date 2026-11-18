@@ -3,3 +3,6 @@ node_modules
 next-env.d.ts
 *.tsbuildinfo
 .env*.local
+
+# Fichiers envoyés par les utilisateurs (pièces jointes, photos) : jamais dans git
+/storage/
