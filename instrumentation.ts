@@ -4,6 +4,8 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { prepareDatabase } = await import("./lib/db-startup");
+    await prepareDatabase();
     const { checkStorage } = await import("./lib/storage-check");
     await checkStorage();
   }

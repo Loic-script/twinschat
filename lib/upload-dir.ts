@@ -7,5 +7,8 @@ import path from "node:path";
  */
 export function uploadDirPath() {
   // turbopackIgnore : dossier de données à l'exécution, à ne pas embarquer dans le build.
-  return path.resolve(/* turbopackIgnore: true */ process.cwd(), process.env.UPLOAD_DIR || "storage/uploads");
+  // Volume de la plateforme d'hébergement (TWINS_VOLUME_MOUNT_PATH) : utilisé si UPLOAD_DIR n'est pas défini
+  const volume = process.env.TWINS_VOLUME_MOUNT_PATH;
+  const fallback = volume ? path.join(volume, "uploads") : "storage/uploads";
+  return path.resolve(/* turbopackIgnore: true */ process.cwd(), process.env.UPLOAD_DIR || fallback);
 }

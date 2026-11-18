@@ -22,11 +22,25 @@ function createPool() {
   return pool;
 }
 
-// Un seul pool par processus (rechargements à chaud en développement, plusieurs bundles en production).
-export const pool = globalThis.__twinslackPool ?? createPool();
-globalThis.__twinslackPool = pool;
+/**
+ * Un seul pool par processus (rechargements à chaud en développement, plusieurs bundles en production),
+ * créé à la première requête seulement : la compilation (`next build`) charge tous les modules sans
+ * accès à la base ni à DATABASE_URL (hébergeur qui ne fournit les variables qu'au démarrage).
+ */
+function getPool() {
+  return (globalThis.__twinslackPool ??= createPool());
+}
+
+/** Pool PostgreSQL (même usage qu'un `Pool` : `pool.connect()`, `pool.query()`…), créé au premier appel. */
+export const pool = new Proxy({} as Pool, {
+  get(_target, prop) {
+    const real = getPool();
+    const value = Reflect.get(real, prop, real);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
 
 export async function query<T extends QueryResultRow>(text: string, params: unknown[] = []) {
-  const result = await pool.query<T>(text, params);
+  const result = await getPool().query<T>(text, params);
   return result.rows;
 }
