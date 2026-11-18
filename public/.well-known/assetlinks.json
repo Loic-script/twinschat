@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.twinsdev.twinschat",
+      "sha256_cert_fingerprints": [
+        "2F:ED:86:C2:EA:82:5E:78:17:54:DD:94:0B:0E:CB:56:30:95:98:17:06:66:91:0F:CF:83:36:FD:1B:EE:79:E4"
+      ]
+    }
+  }
+]
