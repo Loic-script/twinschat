@@ -5,6 +5,7 @@ import { AvatarEditor } from "@/components/profile/avatar-editor";
 import { CoverEditor } from "@/components/profile/cover-editor";
 import { PasswordForm } from "@/components/profile/password-form";
 import { TranslationSettings } from "@/components/profile/translation-settings";
+import { PushSwitch } from "@/components/layout/push-client";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminProfile } from "@/lib/profile";
@@ -54,6 +55,18 @@ export default async function AdminProfilePage() {
         <section className="mt-6 rounded-[24px] border border-border/60 bg-surface-2/35 p-6">
           <h2 className="mb-5 text-lg font-semibold">Traduction</h2>
           <TranslationSettings space="admin" enabled={translation.enabled} languages={translation.languages} server={translation.server} />
+        </section>
+
+        {/* Notifications push de cet appareil */}
+        <section className="mt-6 rounded-[24px] border border-border/60 bg-surface-2/35 p-6">
+          <h2 className="text-lg font-semibold">Notifications</h2>
+          <p className="mt-1 text-sm text-muted">
+            Recevez les nouveaux messages sur ce téléphone ou cet ordinateur, même quand TwinsChat est fermé.
+            À activer sur chaque appareil.
+          </p>
+          <ul className="mt-3">
+            <PushSwitch space="admin" />
+          </ul>
         </section>
 
         {/* Mot de passe */}

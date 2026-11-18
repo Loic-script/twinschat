@@ -9,6 +9,7 @@ import { LogoMark } from "@/components/brand/logo";
 import { ProjectIcon } from "@/components/brand/project-icon";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import { PushBridge } from "@/components/layout/push-client";
+import { FallbackImage } from "@/components/ui/fallback-image";
 import { initials } from "@/lib/format";
 import type { NotificationFeed, Space } from "@/lib/types";
 
@@ -140,8 +141,7 @@ export function AppSidebar({
           }`}
         >
           {userAvatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- photo privée servie par l'API
-            <img src={userAvatarUrl} alt="" className="size-full rounded-full object-cover" />
+            <FallbackImage src={userAvatarUrl} className="size-full rounded-full object-cover" fallback={initials(userName)} />
           ) : (
             initials(userName)
           )}

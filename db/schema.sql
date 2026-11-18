@@ -208,6 +208,18 @@ BEGIN
   END IF;
 END $$;
 
+-- Guide d'utilisation : date du premier affichage (montré d'office tant qu'il n'a pas été vu).
+-- À l'ajout de la colonne, les comptes inscrits depuis plus d'un jour sont considérés comme l'ayant vu.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'guide_seen_at'
+  ) THEN
+    ALTER TABLE users ADD COLUMN guide_seen_at TIMESTAMPTZ;
+    UPDATE users SET guide_seen_at = now() WHERE created_at < now() - interval '1 day';
+  END IF;
+END $$;
+
 
 -- Traduction des messages (faite par le navigateur) : désactivée par défaut, activée dans le profil.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS translation_enabled BOOLEAN NOT NULL DEFAULT false;

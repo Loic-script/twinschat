@@ -32,7 +32,7 @@ export async function checkStorage() {
       "[stockage] ATTENTION : cet hébergement n'a pas de disque permanent. Les fichiers envoyés seront perdus. " +
         "Utilisez un serveur (VPS) ou un hébergeur avec volume persistant, et définissez UPLOAD_DIR sur ce volume.",
     );
-  } else if (!path.isAbsolute(process.env.UPLOAD_DIR || process.env.TWINS_VOLUME_MOUNT_PATH || "")) {
+  } else if (dir.startsWith(path.resolve(/* turbopackIgnore: true */ process.cwd()) + path.sep)) {
     console.warn(
       `[stockage] Conseil : UPLOAD_DIR n'est pas un chemin absolu (dossier actuel : ${dir}). ` +
         "S'il se trouve dans le dossier de l'application, il peut être effacé lors d'un redéploiement : " +

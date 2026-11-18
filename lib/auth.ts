@@ -28,6 +28,8 @@ export type Actor = {
   avatarUrl: string | null;
   /** Parcours d'accueil terminé (faux juste après l'inscription). */
   onboarded: boolean;
+  /** Guide d'utilisation déjà affiché (montré d'office au premier accès à l'espace utilisateur). */
+  guideSeen: boolean;
 };
 
 const digest = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -48,9 +50,10 @@ export const getSessionUser = cache(async (): Promise<Actor | null> => {
     avatar_key: string | null;
     avatar_updated_at: Date | null;
     onboarded: boolean;
+    guide_seen: boolean;
   }>(
     `SELECT u.id, u.full_name, u.email, u.role, u.company, u.avatar_key, u.avatar_updated_at,
-            u.onboarded_at IS NOT NULL AS onboarded
+            u.onboarded_at IS NOT NULL AS onboarded, u.guide_seen_at IS NOT NULL AS guide_seen
        FROM sessions s
        JOIN users u ON u.id = s.user_id
       WHERE s.id = $1 AND s.expires_at > now()`,
@@ -65,6 +68,7 @@ export const getSessionUser = cache(async (): Promise<Actor | null> => {
     company: row.company,
     avatarUrl: avatarUrl(row.id, row.avatar_key, row.avatar_updated_at),
     onboarded: row.onboarded,
+    guideSeen: row.guide_seen,
   };
 });
 

@@ -16,6 +16,7 @@ import {
 import { startConversation } from "@/app/admin/utilisateurs/actions";
 import { RoleBadge } from "@/components/messages/role-badge";
 import { Avatar } from "@/components/ui/avatar";
+import { FallbackImage } from "@/components/ui/fallback-image";
 import { ProjectCard } from "@/components/users/project-card";
 import { displayName, displaySubtitle, formatDate, formatPresence } from "@/lib/format";
 import { requireAdmin } from "@/lib/auth";
@@ -69,8 +70,7 @@ export default async function UserProfilePage({ params }: Props) {
         <section className="mt-4 overflow-hidden rounded-[28px] border border-border/60 bg-surface-2/35">
           <div className="relative h-32 bg-gradient-to-br from-accent-strong/70 via-accent/40 to-emerald-900/40 md:h-40">
             {user.coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- photo privée servie par l'API
-              <img src={user.coverUrl} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
+              <FallbackImage src={user.coverUrl} className="absolute inset-0 size-full object-cover" />
             ) : (
               <span
                 aria-hidden

@@ -1,3 +1,4 @@
+import { FallbackImage } from "@/components/ui/fallback-image";
 import { initials } from "@/lib/format";
 import type { Status } from "@/lib/types";
 
@@ -29,19 +30,18 @@ export function Avatar({
   className?: string;
 }) {
   const { box, dot } = SIZES[size];
+  const initialsBadge = (
+    <span
+      aria-hidden
+      className={`${box} ${AVATAR_STYLE} inline-flex items-center justify-center rounded-full font-semibold`}
+    >
+      {initials(name)}
+    </span>
+  );
   return (
     <span className={`relative inline-flex shrink-0 rounded-full ${className}`}>
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element -- photo privée servie par l'API
-        <img src={src} alt="" aria-hidden className={`${box} rounded-full object-cover`} />
-      ) : (
-        <span
-          aria-hidden
-          className={`${box} ${AVATAR_STYLE} inline-flex items-center justify-center rounded-full font-semibold`}
-        >
-          {initials(name)}
-        </span>
-      )}
+      {/* Photo introuvable : les initiales la remplacent */}
+      {src ? <FallbackImage src={src} className={`${box} rounded-full object-cover`} fallback={initialsBadge} /> : initialsBadge}
       {/* Point vert uniquement pour les personnes en ligne */}
       {status === "en_ligne" && (
         <span

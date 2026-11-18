@@ -1,5 +1,6 @@
 "use client";
 
+import { FallbackImage } from "@/components/ui/fallback-image";
 import type { Space } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -49,8 +50,7 @@ export function CoverEditor({ coverUrl, space }: { coverUrl: string | null; spac
   return (
     <div className="relative h-36 overflow-hidden md:h-48">
       {coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- photo privée servie par l'API
-        <img src={coverUrl} alt="" className="size-full object-cover" />
+        <FallbackImage src={coverUrl} className="size-full object-cover" />
       ) : (
         <div className="relative size-full bg-gradient-to-br from-accent-strong/70 via-accent/40 to-emerald-900/40">
           <span
