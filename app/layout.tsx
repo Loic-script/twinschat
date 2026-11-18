@@ -13,7 +13,14 @@ export const metadata: Metadata = {
   // Application installable (écran d'accueil) : indispensable aux notifications push sur iPhone
   applicationName: "TwinsChat",
   appleWebApp: { capable: true, title: "TwinsChat", statusBarStyle: "black-translucent" },
-  icons: { apple: "/icons/apple-touch-icon.png" },
+  // Logo dans l'onglet du navigateur : SVG (net à toutes les tailles) + PNG pour les navigateurs sans favicon SVG
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = { themeColor: "#05090b" };
