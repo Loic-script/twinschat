@@ -15,6 +15,7 @@ export function UserCard({ user }: { user: UserCardData }) {
       <div className="mt-2 flex flex-col items-center text-center">
         <Avatar
           name={name}
+          src={user.avatarUrl}
           size="2xl"
           className="ring-4 ring-surface-2/80"
         />

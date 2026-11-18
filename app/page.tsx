@@ -24,7 +24,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const notice = typeof erreur === "string" ? GOOGLE_NOTICES[erreur] : undefined;
 
   return (
-    <main className="relative flex min-h-dvh items-start justify-center overflow-hidden px-4 py-10 sm:items-center short:py-4">
+    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10 short:py-4">
+      {/* Centré verticalement sur toutes les tailles ; min-h-dvh laisse la page grandir (et défiler) si l'inscription dépasse l'écran */}
       <StarfieldBackground />
       <div className="relative w-full max-w-md">
         <h1 className="text-center motion-safe:animate-auth-in">

@@ -1,6 +1,7 @@
 import "server-only";
 import { query } from "./db";
-import { isUuid } from "./messages";
+import { avatarUrl, isUuid } from "./messages";
+import { coverUrl } from "./profile";
 import type { Project, ProjectStatus, Role, Status, UserCard, UserProfile } from "./types";
 
 export const USERS_PAGE_SIZE = 12;
@@ -21,6 +22,8 @@ type CardRow = {
   job_title: string | null;
   workplace: string | null;
   city: string | null;
+  avatar_key: string | null;
+  avatar_updated_at: Date | null;
   projects_total: number;
   projects_active: number;
   projects_done: number;
@@ -30,7 +33,7 @@ type CardRow = {
 
 const CARD_SELECT = `
   SELECT u.id, u.full_name, u.email, u.role, u.company, u.status, u.last_seen_at,
-         u.job_title, u.workplace, u.city,
+         u.job_title, u.workplace, u.city, u.avatar_key, u.avatar_updated_at,
          (SELECT count(*)::int FROM projects p WHERE p.owner_id = u.id) AS projects_total,
          (SELECT count(*)::int FROM projects p WHERE p.owner_id = u.id AND p.status = 'en_cours') AS projects_active,
          (SELECT count(*)::int FROM projects p WHERE p.owner_id = u.id AND p.status = 'termine') AS projects_done,
@@ -54,6 +57,7 @@ function toCard(r: CardRow): UserCard {
     jobTitle: r.job_title,
     workplace: r.workplace,
     city: r.city,
+    avatarUrl: avatarUrl(r.id, r.avatar_key, r.avatar_updated_at),
     projectsTotal: r.projects_total,
     projectsActive: r.projects_active,
     projectsDone: r.projects_done,
@@ -101,9 +105,14 @@ export async function getUserProfile(userId: string, adminId: string): Promise<U
       created_at: Date;
       country: string | null;
       languages: string[];
+      cover_key: string | null;
+      cover_updated_at: Date | null;
     }
   >(
-    `${CARD_SELECT.replace("u.job_title,", "u.job_title, u.address, u.description, u.created_at, u.country, u.languages,")}
+    `${CARD_SELECT.replace(
+      "u.job_title,",
+      "u.job_title, u.address, u.description, u.created_at, u.country, u.languages, u.cover_key, u.cover_updated_at,",
+    )}
      WHERE u.id = $1 AND u.role <> 'admin'`,
     [userId],
   );
@@ -137,6 +146,7 @@ export async function getUserProfile(userId: string, adminId: string): Promise<U
 
   return {
     ...toCard(row),
+    coverUrl: coverUrl(row.id, row.cover_key, row.cover_updated_at),
     address: row.address,
     country: row.country,
     languages: row.languages ?? [],

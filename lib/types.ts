@@ -95,6 +95,8 @@ export type UserCard = {
   jobTitle: string | null;
   workplace: string | null;
   city: string | null;
+  /** Photo de profil (null : initiales). */
+  avatarUrl: string | null;
   projectsTotal: number;
   projectsActive: number;
   projectsDone: number;
@@ -102,6 +104,8 @@ export type UserCard = {
 };
 
 export type UserProfile = UserCard & {
+  /** Photo de couverture (null : bandeau par défaut). */
+  coverUrl: string | null;
   address: string | null;
   country: string | null;
   /** Langues parlées (codes ISO 639-1). */

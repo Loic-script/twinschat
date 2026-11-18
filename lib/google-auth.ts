@@ -23,6 +23,21 @@ export const GOOGLE_COOKIE_PATH = "/api/auth/google";
 
 export type GoogleConfig = { clientId: string; clientSecret: string; redirectUri: string };
 
+const HOST_PATTERN = /^[a-z0-9.-]+(:\d{1,5})?$/i;
+
+/**
+ * Adresse publique du site telle que le visiteur la voit (ex. https://twinschat.ucan-mih.com).
+ * Derrière un proxy (nginx de l'hébergeur), `request.nextUrl.origin` vaut « localhost:3000 » en production :
+ * on lit donc les en-têtes X-Forwarded-Host / Host et X-Forwarded-Proto transmis par le proxy.
+ */
+export function publicOrigin(request: Request & { nextUrl: URL }) {
+  const first = (v: string | null) => v?.split(",")[0].trim() || null;
+  const host = first(request.headers.get("x-forwarded-host")) ?? first(request.headers.get("host"));
+  const proto = first(request.headers.get("x-forwarded-proto")) ?? request.nextUrl.protocol.replace(":", "");
+  if (host && HOST_PATTERN.test(host) && (proto === "https" || proto === "http")) return `${proto}://${host}`;
+  return request.nextUrl.origin;
+}
+
 /** Configuration lue dans l'environnement, ou `null` si la connexion Google n'est pas configurée. */
 export function googleConfig(origin: string): GoogleConfig | null {
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();

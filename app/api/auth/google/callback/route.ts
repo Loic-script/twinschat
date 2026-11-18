@@ -10,6 +10,7 @@ import {
   fetchGoogleProfile,
   findOrCreateGoogleUser,
   googleConfig,
+  publicOrigin,
 } from "@/lib/google-auth";
 
 const sameValue = (a: string, b: string) =>
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
   // L'utilisateur a fermé ou refusé la fenêtre Google
   if (params.get("error")) redirect("/?erreur=google-annule");
 
-  const config = googleConfig(request.nextUrl.origin);
+  const config = googleConfig(publicOrigin(request));
   if (!config) redirect("/?erreur=google-config");
 
   const code = params.get("code");

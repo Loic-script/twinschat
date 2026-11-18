@@ -68,16 +68,22 @@ export default async function UserProfilePage({ params }: Props) {
         {/* Carte d'identité */}
         <section className="mt-4 overflow-hidden rounded-[28px] border border-border/60 bg-surface-2/35">
           <div className="relative h-32 bg-gradient-to-br from-accent-strong/70 via-accent/40 to-emerald-900/40 md:h-40">
-            <span
-              aria-hidden
-              className="absolute inset-0 opacity-40 [background-image:radial-gradient(circle,rgba(255,255,255,.6)_1px,transparent_1.5px)] [background-size:22px_22px] [mask-image:linear-gradient(to_left,black,transparent_80%)]"
-            />
+            {user.coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- photo privée servie par l'API
+              <img src={user.coverUrl} alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
+            ) : (
+              <span
+                aria-hidden
+                className="absolute inset-0 opacity-40 [background-image:radial-gradient(circle,rgba(255,255,255,.6)_1px,transparent_1.5px)] [background-size:22px_22px] [mask-image:linear-gradient(to_left,black,transparent_80%)]"
+              />
+            )}
           </div>
           <div className="flex flex-col gap-5 px-6 pb-6 md:flex-row md:items-end md:px-8">
             {/* Socle opaque : l'avatar est translucide et chevauche la bannière */}
             <div className="-mt-14 self-start rounded-full bg-surface p-1.5 md:-mt-16">
               <Avatar
                 name={name}
+                src={user.avatarUrl}
                 size="3xl"
                 status={user.status}
               />

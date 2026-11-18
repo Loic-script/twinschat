@@ -3,7 +3,7 @@ import { query } from "./db";
 import { avatarUrl } from "./messages";
 import type { Role } from "./types";
 
-const coverUrl = (id: string, key: string | null, updatedAt: Date | null) =>
+export const coverUrl = (id: string, key: string | null, updatedAt: Date | null) =>
   key ? `/api/avatars/${id}?kind=cover&v=${updatedAt?.getTime() ?? 0}` : null;
 
 export type AdminProfile = {
