@@ -1,3 +1,4 @@
+import { DownloadAppBanner } from "@/components/app/download-app";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AutoRefresh } from "@/components/messages/auto-refresh";
 import { requireAdmin } from "@/lib/auth";
@@ -16,7 +17,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Cadre de l'application */}
       <div className="flex h-full overflow-hidden bg-surface md:rounded-[28px] md:border md:border-border/60 md:shadow-2xl md:shadow-black/40">
         <AppSidebar space="admin" userName={admin.name} userAvatarUrl={admin.avatarUrl} notifications={notifications} />
-        <main className="flex min-w-0 flex-1 flex-col pb-[64px] md:pb-0">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col pb-[64px] md:pb-0">
+          <DownloadAppBanner />
+          <div className="min-h-0 flex-1">{children}</div>
+        </main>
       </div>
     </div>
   );

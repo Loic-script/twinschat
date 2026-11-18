@@ -24,6 +24,8 @@ const STORAGE = [
   { name: "twinschat:cookies-ok", purpose: "Retient que vous avez lu le bandeau d'information sur les cookies." },
   { name: "twinschat:traduction:…", purpose: "Langue de traduction choisie dans les discussions." },
   { name: "twinschat:rubriques-vues:…", purpose: "Dernier passage dans chaque rubrique (point vert des nouveautés)." },
+  { name: "twinschat:appli", purpose: "Retient que l'appli TwinsChat est installée sur cet appareil (plus de proposition de téléchargement)." },
+  { name: "twinschat:appli-masquee", purpose: "Retient que vous avez masqué le bandeau « Installez l'appli »." },
 ];
 
 /** Page publique : cookies et stockage local utilisés par TwinsChat. */

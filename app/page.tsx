@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { DownloadAppLinks } from "@/components/app/download-app";
 import { AuthPanel } from "@/components/auth/auth-panel";
 import { StarfieldBackground } from "@/components/auth/starfield-background";
 import { StackedLogo } from "@/components/brand/logo";
@@ -36,6 +37,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
         <div className="mt-7 short:mt-4">
           <AuthPanel notice={notice} />
         </div>
+
+        <DownloadAppLinks />
       </div>
     </main>
   );
