@@ -137,7 +137,8 @@ export default async function MemberMessagesPage({
         <MemberChatList direct={direct} projects={projectItems} activeKey={activeKey} />
       </aside>
 
-      <div className={`h-full min-w-0 flex-1 ${chat ? "block" : "hidden md:block"}`}>
+      {/* data-chat-open : sur téléphone, la barre de navigation du bas est masquée pendant la conversation */}
+      <div data-chat-open={chat ? "" : undefined} className={`h-full min-w-0 flex-1 ${chat ? "block" : "hidden md:block"}`}>
         {chat?.project ? (
           <ChatPanel
             space="user"

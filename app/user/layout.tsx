@@ -19,7 +19,7 @@ export default async function MemberLayout({ children }: { children: React.React
       <AutoRefresh intervalMs={5000} />
       <div className="flex h-full overflow-hidden bg-surface md:rounded-[28px] md:border md:border-border/60 md:shadow-2xl md:shadow-black/40">
         <AppSidebar space="user" userName={me.name} userAvatarUrl={me.avatarUrl} notifications={notifications} />
-        <main className="flex min-w-0 flex-1 flex-col pb-[64px] md:pb-0">
+        <main className="flex min-w-0 flex-1 flex-col pb-[64px] has-[[data-chat-open]]:pb-0 md:pb-0">
           <DownloadAppBanner />
           <div className="min-h-0 flex-1">{children}</div>
         </main>

@@ -152,6 +152,7 @@ export function AppSidebar({
       {/* Barre du bas (mobile) */}
       <nav
         aria-label={label}
+        data-mobile-tabbar
         className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-surface px-2 py-1.5 md:hidden"
       >
         {nav.filter((n) => !n.desktopOnly).map(({ href, label: itemLabel, short, icon: Icon }) => (

@@ -38,7 +38,8 @@ export default async function MessagesPage({
         <ConversationList conversations={conversations} activeId={active?.id ?? null} />
       </aside>
 
-      <div className={`h-full min-w-0 flex-1 ${active ? "block" : "hidden md:block"}`}>
+      {/* data-chat-open : sur téléphone, la barre de navigation du bas est masquée pendant la conversation */}
+      <div data-chat-open={active ? "" : undefined} className={`h-full min-w-0 flex-1 ${active ? "block" : "hidden md:block"}`}>
         {active ? (
           <ChatPanel
             translate={translation}

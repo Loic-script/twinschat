@@ -102,7 +102,8 @@ export function OnboardingWizard({
     const found: Partial<Record<OnboardingField, string>> = {};
     if (!type) found.type = "Choisissez le type de compte.";
     if (values.name.trim().length < 2) found.name = "Indiquez votre nom (2 caractères minimum).";
-    if (values.phone.trim() && !PHONE_RE.test(values.phone.trim())) found.phone = "Numéro de téléphone invalide.";
+    if (!values.phone.trim()) found.phone = "Indiquez votre numéro de téléphone.";
+    else if (!PHONE_RE.test(values.phone.trim())) found.phone = "Numéro de téléphone invalide.";
     if (!values.country) found.country = "Choisissez votre pays.";
     setLocalErrors(found);
     if (Object.keys(found).length === 0) go(2);
@@ -129,11 +130,16 @@ export function OnboardingWizard({
           noValidate
           className={step === 3 ? "hidden" : undefined}
           onSubmit={(e) => {
-            // Pays obligatoire (étape 1) : vérifié avant l'envoi, et de nouveau côté serveur
+            // Pays (étape 1) et langues (étape 2) obligatoires : vérifiés avant l'envoi, et de nouveau côté serveur
             if (!values.country) {
               e.preventDefault();
               setLocalErrors((er) => ({ ...er, country: "Choisissez votre pays." }));
               go(1);
+              return;
+            }
+            if (new FormData(e.currentTarget).getAll("languages").length === 0) {
+              e.preventDefault();
+              setLocalErrors((er) => ({ ...er, languages: "Choisissez au moins une langue." }));
             }
           }}
         >
@@ -168,7 +174,6 @@ export function OnboardingWizard({
               <TextField
                 id="phone"
                 label="Téléphone"
-                optional
                 type="tel"
                 value={values.phone}
                 onChange={set("phone")}
@@ -256,10 +261,12 @@ export function OnboardingWizard({
               </div>
             </div>
             <fieldset className="mt-5">
-              <legend className="mb-2 text-sm font-medium text-foreground/90">
-                Langues parlées <span className="font-normal text-muted">(facultatif)</span>
-              </legend>
-              <LanguagePicker defaultValue={values.languages} />
+              <legend className="mb-2 text-sm font-medium text-foreground/90">Langues parlées</legend>
+              <LanguagePicker
+                defaultValue={values.languages}
+                onChange={() => setLocalErrors((er) => ({ ...er, languages: undefined }))}
+              />
+              <FieldError id="onb-languages-error" error={errors.languages} />
             </fieldset>
 
             {state.status === "error" && state.message && !STEP1_FIELDS.some((f) => state.errors?.[f]) && (

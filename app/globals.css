@@ -124,6 +124,13 @@ body {
   }
 }
 
+/* Téléphone : conversation ouverte (data-chat-open) → plein écran, sans la barre de navigation du bas */
+@media (width < 48rem) {
+  body:has([data-chat-open]) [data-mobile-tabbar] {
+    display: none;
+  }
+}
+
 /* Pages d'erreur : le robot flotte doucement */
 @theme {
   --animate-err-float: err-float 6s ease-in-out infinite;

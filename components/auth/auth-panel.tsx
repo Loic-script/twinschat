@@ -225,7 +225,7 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           label="Mot de passe"
           autoComplete="new-password"
           enterKeyHint="next"
-          hint="8 caractères minimum, avec au moins une lettre et un chiffre."
+          hint="8 caractères minimum. Conseil : mélangez lettres, chiffres et symboles."
           meter
           onValueChange={setPassword}
         />

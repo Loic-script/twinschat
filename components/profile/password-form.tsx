@@ -68,7 +68,7 @@ export function PasswordForm({ hasPassword, space }: { hasPassword: boolean; spa
               <CheckCircle2 className="size-4" /> {state.message}
             </span>
           )}
-          {state.status === "idle" && <span className="text-xs text-muted">8 caractères minimum, avec au moins une lettre et un chiffre.</span>}
+          {state.status === "idle" && <span className="text-xs text-muted">8 caractères minimum. Conseil : mélangez lettres, chiffres et symboles.</span>}
         </p>
         <button
           type="button"

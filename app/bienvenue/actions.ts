@@ -14,7 +14,16 @@ const ROLE_OF: Record<AccountType, Exclude<Role, "admin">> = {
   autre: "utilisateur",
 };
 
-export type OnboardingField = "type" | "name" | "phone" | "company" | "jobTitle" | "country" | "city" | "website";
+export type OnboardingField =
+  | "type"
+  | "name"
+  | "phone"
+  | "company"
+  | "jobTitle"
+  | "country"
+  | "city"
+  | "website"
+  | "languages";
 
 export type OnboardingState = {
   status: "idle" | "success" | "error";
@@ -22,7 +31,7 @@ export type OnboardingState = {
   errors?: Partial<Record<OnboardingField, string>>;
 };
 
-const LIMITS: Record<Exclude<OnboardingField, "type">, number> = {
+const LIMITS: Record<Exclude<OnboardingField, "type" | "languages">, number> = {
   name: 80,
   phone: 30,
   company: 80,
@@ -80,7 +89,9 @@ export async function saveOnboarding(_prev: OnboardingState, formData: FormData)
     if (values[f].length > max) errors[f] = `${max} caractères maximum.`;
   }
   if (!errors.name && values.name.length < 2) errors.name = "Indiquez votre nom (2 caractères minimum).";
-  if (!errors.phone && values.phone && !PHONE_RE.test(values.phone)) errors.phone = "Numéro de téléphone invalide.";
+  if (!errors.phone && !values.phone) errors.phone = "Indiquez votre numéro de téléphone.";
+  else if (!errors.phone && !PHONE_RE.test(values.phone)) errors.phone = "Numéro de téléphone invalide.";
+  if (languages.length === 0) errors.languages = "Choisissez au moins une langue.";
   if (!errors.company && type === "entreprise" && !values.company) errors.company = "Indiquez le nom de votre entreprise.";
   if (!errors.country && !values.country) errors.country = "Choisissez votre pays.";
   const website = values.website ? normalizeWebsite(values.website) : null;

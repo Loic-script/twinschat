@@ -21,10 +21,12 @@ export async function verifyPassword(password: string, stored: string) {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-/** Règle minimale : 8 caractères, au moins une lettre et un chiffre. */
+/**
+ * Règle minimale : 8 caractères. L'indicateur de robustesse (« Faible », « Correct »…) n'est qu'un conseil :
+ * un mot de passe jugé faible est accepté dès qu'il respecte cette longueur.
+ */
 export function passwordProblem(password: string): string | null {
   if (password.length < 8) return "8 caractères minimum.";
   if (password.length > 128) return "128 caractères maximum.";
-  if (!/[A-Za-zÀ-ÿ]/.test(password) || !/\d/.test(password)) return "Utilisez au moins une lettre et un chiffre.";
   return null;
 }
